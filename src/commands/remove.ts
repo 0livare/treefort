@@ -1,6 +1,5 @@
 import {mkdir, rename} from 'node:fs/promises'
 import {basename, join} from 'node:path'
-import chalk from '../chalk'
 import {
   branchIsPushed,
   deleteBranch,
@@ -11,7 +10,8 @@ import {
   type Worktree,
 } from '../git'
 import {printError, printSuccess, printWarning} from '../helpers'
-import {confirm, select} from '../select'
+import {confirm} from '../select'
+import {pickWorktree} from '../worktree-picker'
 
 export async function remove(
   name: string | undefined,
@@ -43,11 +43,8 @@ export async function remove(
     target = found
   } else {
     interactive = true
-    const chosen = await select<Worktree>({
-      items: removable,
-      header: [chalk.bold('  Remove worktree'), ''],
-      label: (w) =>
-        `${basename(w.path)}   ${chalk.dim(w.branch ?? 'detached')}`,
+    const chosen = await pickWorktree(removable, {
+      title: 'Remove worktree',
       emptyMessage: 'no worktrees to remove',
     })
     if (!chosen) process.exit(0)
