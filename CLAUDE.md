@@ -44,10 +44,17 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org) spec:
 <type>: <short summary>
 ```
 
-- Common types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`.
+- Common types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `build`.
 - Summary in the imperative mood, lowercase, no trailing period.
 - Add a body (blank line, then wrapped prose) for non-trivial changes.
-- Commit distinct changes separately — one logical change per commit.
 
 Examples from this repo: `feat: add zsh tab completion`,
 `refactor: use node: prefix for Node builtin imports`.
+
+### Always commit atomically; never push
+
+- **Commit atomically**: one logical change per commit. Split unrelated changes
+  into separate commits (e.g. a tooling change and a feature are two commits).
+  Each commit should stand on its own and leave the code building.
+- **Never push.** Only ever create local commits — do not run `git push`. Leave
+  publishing to the human.

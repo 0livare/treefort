@@ -18,7 +18,7 @@ const shellScript = `wt() {
 
 _wt() {
   local -a subcmds
-  subcmds=(add rm list ls exec install shell-init)
+  subcmds=(add rm list ls cd root exec install shell-init)
   if (( CURRENT == 2 )); then
     compadd -- $subcmds
     return
@@ -27,6 +27,9 @@ _wt() {
     case "\${words[2]}" in
       rm|remove|exec)
         compadd -- \${(f)"$(command wt __complete worktrees 2>/dev/null)"}
+        ;;
+      cd)
+        compadd -- \${(f)"$(command wt __complete cd 2>/dev/null)"}
         ;;
       add)
         compadd -- \${(f)"$(command wt __complete branches 2>/dev/null)"}

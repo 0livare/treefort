@@ -62,6 +62,11 @@ export async function mainRoot(): Promise<string | null> {
   return worktrees[0]?.path ?? null
 }
 
+// Display / lookup name: the main worktree is "root", others use their dir name.
+export function worktreeName(w: Worktree): string {
+  return w.isMain ? 'root' : basename(w.path)
+}
+
 async function currentToplevel(): Promise<string | null> {
   const {code, stdout} = await run(['git', 'rev-parse', '--show-toplevel'])
   return code === 0 ? stdout : null
@@ -172,6 +177,17 @@ export function spawnDetachedRm(path: string): void {
 export async function worktreeNames(): Promise<string[]> {
   const worktrees = await listWorktrees()
   return worktrees.filter((w) => !w.isMain).map((w) => basename(w.path))
+}
+
+// Everything `wt cd` accepts: worktree names (incl. "root") + their branches.
+export async function cdTargets(): Promise<string[]> {
+  const worktrees = await listWorktrees()
+  const targets = new Set<string>()
+  for (const w of worktrees) {
+    targets.add(worktreeName(w))
+    if (w.branch) targets.add(w.branch)
+  }
+  return [...targets]
 }
 
 // Local + remote branch names, for `wt add` completion.

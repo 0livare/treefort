@@ -1,6 +1,5 @@
-import {basename} from 'node:path'
 import chalk from '../chalk'
-import {isDirty, listWorktrees} from '../git'
+import {isDirty, listWorktrees, worktreeName} from '../git'
 import {printWarning, say} from '../helpers'
 
 export async function list() {
@@ -11,9 +10,7 @@ export async function list() {
   }
 
   const dirty = await Promise.all(worktrees.map((w) => isDirty(w.path)))
-  const names = worktrees.map((w) =>
-    w.isMain ? `${basename(w.path)} (main)` : basename(w.path),
-  )
+  const names = worktrees.map(worktreeName)
   const width = Math.max(...names.map((n) => n.length))
 
   say()

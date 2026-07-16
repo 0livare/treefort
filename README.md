@@ -42,6 +42,13 @@ wt add
 # List all worktrees (current is marked, dirty ones flagged)
 wt list        # or: wt ls
 
+# cd to a worktree by name or branch; no arg cds to the root (main) worktree
+wt cd feature-x
+wt cd          # or: wt cd root
+
+# cd back to the root worktree (alias for `wt cd` with no argument)
+wt root
+
 # Remove a worktree. The directory is deregistered and moved out of the way
 # instantly, then deleted in the background — the command returns immediately.
 wt rm feature-x
@@ -62,7 +69,7 @@ wt exec feature-x -- bun test
 wt exec @ -- git status
 ```
 
-Tab completion (worktree names for `rm`/`exec`, branch names for `add`) is set up
+Tab completion (worktree names for `rm`/`cd`/`exec`, branch names for `add`) is set up
 automatically by `wt install` for zsh.
 
 ### Flags

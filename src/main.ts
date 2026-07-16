@@ -2,6 +2,7 @@
 import {parseCliArgs} from './cli'
 import {
   add,
+  cd,
   complete,
   exec,
   help,
@@ -47,6 +48,13 @@ async function main() {
     case 'list':
     case 'ls':
       await list()
+      break
+    case 'cd':
+      await cd(rest[0])
+      break
+    case 'root':
+      // Alias for `wt cd` with no target: back to the root worktree.
+      await cd(undefined)
       break
     case 'exec':
       await exec(rest[0], rest.slice(1))
