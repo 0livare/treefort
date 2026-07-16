@@ -1,4 +1,5 @@
-import {basename} from 'node:path'
+import {mkdir, rename} from 'node:fs/promises'
+import {basename, join} from 'node:path'
 
 export type Worktree = {
   path: string
@@ -96,6 +97,31 @@ export async function branchExists(branch: string): Promise<boolean> {
   return code === 0
 }
 
+// The repo's trunk branch: 'main' if it exists, else 'master', else null.
+export async function trunkBranch(): Promise<string | null> {
+  for (const name of ['main', 'master']) {
+    if (await branchExists(name)) return name
+  }
+  return null
+}
+
+// Local branch names whose tip is reachable from `ref` — i.e. already merged
+// into it. Includes `ref`'s own branch, so callers should filter it out.
+export async function branchesMergedInto(ref: string): Promise<string[]> {
+  const {code, stdout} = await run([
+    'git',
+    'branch',
+    '--merged',
+    ref,
+    '--format=%(refname:short)',
+  ])
+  if (code !== 0) return []
+  return stdout
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 // The worktree currently checking out `branch`, if any.
 export async function worktreeForBranch(
   branch: string,
@@ -149,6 +175,26 @@ export function addWorktree(opts: AddOptions): Promise<RunResult> {
 
 export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
+}
+
+// Instantly retire a worktree: move it into .wkt/.trash via a same-fs rename
+// (so the caller returns without waiting on the delete), deregister it, then let
+// a detached rm -rf finish the slow filesystem delete. False = rename failed.
+export async function trashWorktree(
+  root: string,
+  worktreePath: string,
+): Promise<boolean> {
+  const trashDir = join(root, '.wkt', '.trash')
+  await mkdir(trashDir, {recursive: true})
+  const trashed = join(trashDir, `${basename(worktreePath)}-${Date.now()}`)
+  try {
+    await rename(worktreePath, trashed)
+  } catch {
+    return false
+  }
+  await pruneWorktrees()
+  spawnDetachedRm(trashed)
+  return true
 }
 
 // True if deleting `branch` would lose no commits: its tip commit is contained

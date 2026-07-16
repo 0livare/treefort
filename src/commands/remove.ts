@@ -1,11 +1,9 @@
-import {mkdir, rename} from 'node:fs/promises'
-import {basename, join} from 'node:path'
+import {basename} from 'node:path'
 import {
   branchIsSafeToDelete,
   deleteBranch,
   listWorktrees,
-  pruneWorktrees,
-  spawnDetachedRm,
+  trashWorktree,
   type Worktree,
   worktreeStatus,
 } from '../git'
@@ -79,21 +77,10 @@ export async function remove(
   // worktree we're standing in, our cwd is about to disappear.
   process.chdir(root)
 
-  // Instantly move the dir into trash (same-fs rename), deregister it, then let
-  // a detached rm -rf finish the slow filesystem delete after we exit.
-  const trashDir = join(root, '.wkt', '.trash')
-  await mkdir(trashDir, {recursive: true})
-  const trashed = join(trashDir, `${basename(target.path)}-${Date.now()}`)
-  try {
-    await rename(target.path, trashed)
-  } catch (e) {
-    printError(
-      `could not remove worktree: ${e instanceof Error ? e.message : String(e)}`,
-    )
+  if (!(await trashWorktree(root, target.path))) {
+    printError(`could not remove ${basename(target.path)}`)
     process.exit(1)
   }
-  await pruneWorktrees()
-  spawnDetachedRm(trashed)
 
   printSuccess(`removed ${basename(target.path)} (deleting in background)`)
 

@@ -8,6 +8,7 @@ import {
   help,
   install,
   list,
+  prune,
   remove,
   shellInit,
   switchWorktree,
@@ -50,6 +51,9 @@ async function main() {
     case 'list':
     case 'ls':
       await list()
+      break
+    case 'prune':
+      await prune({force: cli.values.force})
       break
     case 'cd':
       // No target behaves like bare `wt` (interactive picker).

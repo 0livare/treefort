@@ -24,6 +24,9 @@ export function help() {
     `  ${wt} ${c('rm')} ${c('[name]')}                   Remove a worktree (deletes in background)`,
   )
   say(
+    `  ${wt} ${c('prune')}                       Remove all worktrees merged into main`,
+  )
+  say(
     `  ${wt} ${c('list')}${chalk.dim(', ')}${c('ls')}                  List all worktrees`,
   )
   say(

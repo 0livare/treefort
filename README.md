@@ -71,6 +71,11 @@ wt rm feature-x -d
 # Force-remove a worktree with uncommitted changes
 wt rm feature-x --force
 
+# Prune every worktree whose branch is already merged into main (deletes those
+# merged branches too). Dirty worktrees are skipped unless --force.
+wt prune
+wt prune --force
+
 # Run a command inside another worktree without switching to it.
 # Use `@` to target the main worktree. Everything after `--` is the command.
 wt exec feature-x -- bun test
