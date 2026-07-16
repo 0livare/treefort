@@ -3,13 +3,13 @@ import {basename, join} from 'node:path'
 import {
   branchIsPushed,
   deleteBranch,
-  isDirty,
   listWorktrees,
   pruneWorktrees,
   spawnDetachedRm,
   type Worktree,
+  worktreeStatus,
 } from '../git'
-import {printError, printSuccess, printWarning} from '../helpers'
+import {printError, printInfo, printSuccess, printWarning} from '../helpers'
 import {confirm} from '../select'
 import {pickWorktree} from '../worktree-picker'
 
@@ -55,11 +55,15 @@ export async function remove(
   }
 
   // Dirty guard (checked against the worktree's own path, still present here).
-  if (!opts.force && (await isDirty(target.path))) {
-    printError(
-      `${basename(target.path)} has uncommitted changes — use --force to remove anyway`,
-    )
-    process.exit(1)
+  if (!opts.force) {
+    const status = await worktreeStatus(target.path)
+    if (status) {
+      printError(
+        `${basename(target.path)} has uncommitted changes — use --force to remove anyway`,
+      )
+      for (const line of status.split('\n')) printInfo(line)
+      process.exit(1)
+    }
   }
 
   const isCurrent = target.isCurrent

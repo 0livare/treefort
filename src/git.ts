@@ -104,9 +104,14 @@ export async function worktreeForBranch(
   return worktrees.find((w) => w.branch === branch) ?? null
 }
 
+// Uncommitted changes in a worktree as `git status --short` lines (empty = clean).
+export async function worktreeStatus(worktreePath: string): Promise<string> {
+  const {stdout} = await run(['git', 'status', '--short'], worktreePath)
+  return stdout
+}
+
 export async function isDirty(worktreePath: string): Promise<boolean> {
-  const {stdout} = await run(['git', 'status', '--porcelain'], worktreePath)
-  return stdout.length > 0
+  return (await worktreeStatus(worktreePath)).length > 0
 }
 
 // Detach a worktree's HEAD at its current commit, freeing its branch.
