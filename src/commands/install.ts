@@ -1,5 +1,5 @@
-import {homedir} from 'os'
-import {join} from 'path'
+import {homedir} from 'node:os'
+import {join} from 'node:path'
 import {say, printSuccess, printInfo} from '../helpers'
 import {globalExcludesFile, setGlobalExcludesFile} from '../git'
 

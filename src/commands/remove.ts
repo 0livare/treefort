@@ -1,4 +1,4 @@
-import {basename, join} from 'path'
+import {basename, join} from 'node:path'
 import {rename, mkdir} from 'node:fs/promises'
 import chalk from '../chalk'
 import {printError, printSuccess, printWarning} from '../helpers'

@@ -1,4 +1,4 @@
-import {basename} from 'path'
+import {basename} from 'node:path'
 import chalk from '../chalk'
 import {say, printWarning} from '../helpers'
 import {listWorktrees, isDirty} from '../git'

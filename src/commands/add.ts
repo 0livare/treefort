@@ -1,4 +1,4 @@
-import {dirname, join} from 'path'
+import {dirname, join} from 'node:path'
 import {mkdir} from 'node:fs/promises'
 import {printError, printSuccess, printInfo} from '../helpers'
 import {
