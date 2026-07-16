@@ -48,6 +48,9 @@ wt cd feature-x
 # no argument opens the interactive picker (same as bare `wt`)
 wt cd
 
+# `wt <name>` is shorthand for `wt cd <name>` (like `pnpm <script>`)
+wt feature-x
+
 # cd to the previous worktree, toggling back and forth (like `cd -`)
 wt cd -
 

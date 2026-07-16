@@ -13,7 +13,6 @@ import {
   switchWorktree,
   version,
 } from './commands'
-import {printError} from './helpers'
 
 async function main() {
   const cli = parseCliArgs()
@@ -30,11 +29,13 @@ async function main() {
 
   const [command, ...rest] = cli.positionals
 
+  // Bare `wt`: interactive switcher.
+  if (command === undefined) {
+    await switchWorktree()
+    return
+  }
+
   switch (command) {
-    case undefined:
-      // Bare `wt`: interactive switcher.
-      await switchWorktree()
-      break
     case 'add':
       await add(rest[0], rest[1], {force: cli.values.force})
       break
@@ -70,9 +71,9 @@ async function main() {
       await complete(rest[0])
       break
     default:
-      printError(`unknown command: ${command}`)
-      help()
-      process.exit(1)
+      // `wt <name>` is shorthand for `wt cd <name>` (like `pnpm <script>`).
+      await cd(command)
+      break
   }
 }
 
