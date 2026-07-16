@@ -43,6 +43,16 @@ export async function add(
     create = !(await branchExists(branch))
   }
 
+  // Never carve off a worktree for the trunk branch — that's the main worktree's job.
+  if (branch === 'main' || branch === 'master') {
+    printError(
+      name
+        ? `refusing to create a worktree named "${branch}"`
+        : `current branch is "${branch}" — pass a name: wt add <name>`,
+    )
+    process.exit(1)
+  }
+
   const path = join(root, '.wkt', branch)
 
   // If the branch is already checked out in the MAIN worktree, detach it there
