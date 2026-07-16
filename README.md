@@ -52,7 +52,7 @@ wt cd
 wt feature-x
 
 # cd to the previous worktree, toggling back and forth (like `cd -`)
-wt cd -
+wt cd - # or just `wt -`
 
 # cd to the root (main) worktree
 wt cd @        # or: wt root

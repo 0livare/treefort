@@ -62,6 +62,9 @@ export function help() {
   say(
     `  ${wt} ${c('feature-x')}                    Shorthand for ${wt} ${c('cd')} ${c('feature-x')}`,
   )
+  say(
+    `  ${wt} ${c('-')}                            Shorthand for ${wt} ${c('cd')} ${c('-')} (previous worktree)`,
+  )
 
   say()
   say(chalk.bold('Flags:'))

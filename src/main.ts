@@ -63,6 +63,10 @@ async function main() {
     case 'root':
       await cd('@')
       break
+    case '-':
+      // `wt -` is shorthand for `wt cd -` (toggle to the previous worktree).
+      await cd('-')
+      break
     case 'exec':
       await exec(rest[0], rest.slice(1))
       break
