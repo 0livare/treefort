@@ -42,15 +42,17 @@ wt add
 # List all worktrees (current is marked, dirty ones flagged)
 wt list        # or: wt ls
 
-# cd to a worktree by name or branch; no arg cds to the root (main) worktree
+# cd to a worktree by name or branch
 wt cd feature-x
-wt cd          # or: wt cd root
+
+# no argument opens the interactive picker (same as bare `wt`)
+wt cd
 
 # cd to the previous worktree, toggling back and forth (like `cd -`)
 wt cd -
 
-# cd back to the root worktree (alias for `wt cd` with no argument)
-wt root
+# cd to the root (main) worktree
+wt cd @        # or: wt root
 
 # Remove a worktree. The directory is deregistered and moved out of the way
 # instantly, then deleted in the background — the command returns immediately.

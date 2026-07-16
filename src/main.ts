@@ -50,11 +50,12 @@ async function main() {
       await list()
       break
     case 'cd':
-      await cd(rest[0])
+      // No target behaves like bare `wt` (interactive picker).
+      if (rest[0] === undefined) await switchWorktree()
+      else await cd(rest[0])
       break
     case 'root':
-      // Alias for `wt cd` with no target: back to the root worktree.
-      await cd(undefined)
+      await cd('@')
       break
     case 'exec':
       await exec(rest[0], rest.slice(1))

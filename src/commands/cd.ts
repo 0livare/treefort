@@ -3,8 +3,9 @@ import {listWorktrees, worktreeName} from '../git'
 import {printError} from '../helpers'
 
 // Print the path to cd into (the shell wrapper does the actual cd).
-// No arg (or `root`/`@`) → the main worktree; otherwise match by name or branch.
-export async function cd(target: string | undefined) {
+// `-` = previous location; `root`/`@` = main worktree; else match name/branch.
+// (The no-argument case is handled by the dispatcher as the interactive picker.)
+export async function cd(target: string) {
   // `-`: jump to the previous location, toggling like `cd -`. The shell wrapper
   // records it in WT_PREV_WORKTREE before each cd, so this is per-shell state.
   if (target === '-') {
@@ -23,7 +24,7 @@ export async function cd(target: string | undefined) {
     process.exit(1)
   }
 
-  if (!target || target === 'root' || target === '@') {
+  if (target === 'root' || target === '@') {
     process.stdout.write(`${worktrees[0].path}\n`)
     return
   }
