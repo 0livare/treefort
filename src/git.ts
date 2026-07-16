@@ -119,6 +119,14 @@ export function detach(worktreePath: string): Promise<RunResult> {
   return run(['git', 'checkout', '--detach'], worktreePath)
 }
 
+// Check out a branch in a worktree.
+export function checkout(
+  worktreePath: string,
+  ref: string,
+): Promise<RunResult> {
+  return run(['git', 'checkout', ref], worktreePath)
+}
+
 export type AddOptions = {
   path: string
   branch: string

@@ -4,6 +4,7 @@ import {recordAccess} from '../frecency'
 import {
   addWorktree,
   branchExists,
+  checkout,
   currentBranch,
   currentWorktree,
   detach,
@@ -58,18 +59,14 @@ export async function add(
 
   const path = join(root, '.wkt', branch)
 
-  // If the branch is already checked out in the MAIN worktree, detach it there
+  // If the branch is already checked out in the MAIN worktree, free it there
   // first so this worktree can take it. A branch held by some OTHER worktree is
   // left alone — git will refuse and we surface that error.
   if (!create) {
     const holder = await worktreeForBranch(branch)
-    if (holder?.isMain) {
-      printInfo(`detaching ${holder.path} to free ${branch}`)
-      const res = await detach(holder.path)
-      if (res.code !== 0) {
-        printError(res.stderr || `could not detach ${holder.path}`)
-        process.exit(1)
-      }
+    if (holder?.isMain && !(await freeRootWorktree(holder.path))) {
+      printError(`could not free ${branch} from ${holder.path}`)
+      process.exit(1)
     }
   }
 
@@ -100,4 +97,24 @@ export async function add(
 
   // The single stdout line: where the shell wrapper should cd.
   process.stdout.write(`${path}\n`)
+}
+
+// Free the root worktree from its current branch so another worktree can take
+// it: prefer checking out the trunk branch (main, then master); fall back to a
+// detached HEAD only if that fails (e.g. the trunk is checked out elsewhere).
+async function freeRootWorktree(rootPath: string): Promise<boolean> {
+  for (const trunk of ['main', 'master']) {
+    if (await branchExists(trunk)) {
+      const res = await checkout(rootPath, trunk)
+      if (res.code === 0) {
+        printInfo(`checked out ${trunk} in the root worktree`)
+        return true
+      }
+    }
+  }
+  if ((await detach(rootPath)).code === 0) {
+    printInfo('detached the root worktree')
+    return true
+  }
+  return false
 }
