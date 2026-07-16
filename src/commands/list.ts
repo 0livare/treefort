@@ -1,7 +1,7 @@
 import {basename} from 'node:path'
 import chalk from '../chalk'
-import {say, printWarning} from '../helpers'
-import {listWorktrees, isDirty} from '../git'
+import {isDirty, listWorktrees} from '../git'
+import {printWarning, say} from '../helpers'
 
 export async function list() {
   const worktrees = await listWorktrees()
@@ -24,7 +24,7 @@ export async function list() {
     const branch = w.branch
       ? chalk.dim(w.branch)
       : chalk.dim(`detached @ ${w.head.slice(0, 7)}`)
-    const dirtyMark = dirty[i] ? '   ' + chalk.yellow('● dirty') : ''
+    const dirtyMark = dirty[i] ? `   ${chalk.yellow('● dirty')}` : ''
     say(`  ${marker} ${nameStyled}   ${branch}${dirtyMark}`)
   })
   say()

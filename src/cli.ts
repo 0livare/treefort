@@ -2,9 +2,8 @@ import {parseArgs} from 'node:util'
 import {printError} from './helpers'
 
 export function parseCliArgs() {
-  let args
   try {
-    args = parseArgs({
+    const {values, positionals} = parseArgs({
       args: process.argv.slice(2),
       options: {
         force: {type: 'boolean', short: 'f'},
@@ -15,13 +14,9 @@ export function parseCliArgs() {
       strict: true,
       allowPositionals: true,
     })
-  } catch (e: any) {
-    printError(e.message)
+    return {values, positionals}
+  } catch (e) {
+    printError(e instanceof Error ? e.message : String(e))
     process.exit(1)
-  }
-
-  return {
-    values: args.values,
-    positionals: args.positionals,
   }
 }

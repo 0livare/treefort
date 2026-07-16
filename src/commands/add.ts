@@ -1,14 +1,14 @@
-import {dirname, join} from 'node:path'
 import {mkdir} from 'node:fs/promises'
-import {printError, printSuccess, printInfo} from '../helpers'
+import {dirname, join} from 'node:path'
 import {
-  mainRoot,
-  currentBranch,
-  branchExists,
-  worktreeForBranch,
-  detach,
   addWorktree,
+  branchExists,
+  currentBranch,
+  detach,
+  mainRoot,
+  worktreeForBranch,
 } from '../git'
+import {printError, printInfo, printSuccess} from '../helpers'
 
 export async function add(
   name: string | undefined,
@@ -90,5 +90,5 @@ export async function add(
       : `added worktree for ${branch} at .wkt/${branch}`,
   )
   // The single stdout line: where the shell wrapper should cd.
-  process.stdout.write(path + '\n')
+  process.stdout.write(`${path}\n`)
 }

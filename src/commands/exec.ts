@@ -1,6 +1,6 @@
 import {basename} from 'node:path'
-import {printError} from '../helpers'
 import {listWorktrees} from '../git'
+import {printError} from '../helpers'
 
 // Run a command inside another worktree without switching to it.
 // `@` targets the main worktree; otherwise match by worktree name or branch.

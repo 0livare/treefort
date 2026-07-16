@@ -22,5 +22,5 @@ export async function switchWorktree() {
   })
 
   if (!chosen) process.exit(0)
-  process.stdout.write(chosen.path + '\n')
+  process.stdout.write(`${chosen.path}\n`)
 }

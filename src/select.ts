@@ -32,7 +32,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   const render = (first = false) => {
     if (!first) tty.write(`\x1b[${totalLines}A\x1b[J`)
 
-    for (const line of header) tty.write(line + '\n')
+    for (const line of header) tty.write(`${line}\n`)
 
     for (let i = 0; i < items.length; i++) {
       const text = label(items[i])
@@ -116,7 +116,7 @@ export async function confirm(
       process.stdin.removeListener('data', onKey)
       process.stdin.setRawMode(false)
       process.stdin.pause()
-      tty.write((result ? chalk.green('yes') : chalk.dim('no')) + '\n')
+      tty.write(`${result ? chalk.green('yes') : chalk.dim('no')}\n`)
       resolve(result)
     }
 

@@ -1,7 +1,7 @@
 import {homedir} from 'node:os'
 import {join} from 'node:path'
-import {say, printSuccess, printInfo} from '../helpers'
 import {globalExcludesFile, setGlobalExcludesFile} from '../git'
+import {printInfo, printSuccess, say} from '../helpers'
 
 const EVAL_LINE = 'eval "$(command wt shell-init)"'
 
@@ -48,6 +48,6 @@ async function installGitExcludes() {
   }
 
   const sep = existing === '' || existing.endsWith('\n') ? '' : '\n'
-  await Bun.write(resolved, existing + `${sep}.wkt/\n`)
+  await Bun.write(resolved, `${existing}${sep}.wkt/\n`)
   printSuccess(`added .wkt/ to ${excludes}`)
 }

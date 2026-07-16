@@ -1,6 +1,6 @@
 import chalk from './chalk'
 
-const write = (s = '') => process.stderr.write(s + '\n')
+const write = (s = '') => process.stderr.write(`${s}\n`)
 
 // Plain line to stderr (human output; stdout is reserved for the cd path).
 export const say = (s = '') => write(s)

@@ -7,7 +7,7 @@ auto-`cd`). Worktrees live under `.wkt/<name>` at the repo root.
 
 - **Bun + TypeScript**, no build step — the bin (`wt`) points straight at `src/main.ts`.
 - Only runtime dep is `chalk`. Args parsed with `node:util`'s `parseArgs`.
-- No CLI framework, no tests.
+- **Biome** for formatting + linting. No CLI framework, no tests.
 
 ## Layout
 
@@ -30,10 +30,11 @@ Keep this split intact: never print human-facing text to stdout.
 
 ## Conventions
 
-- Prettier (`.prettierrc`): no semicolons, single quotes, 2-space indent, trailing
-  commas, **no bracket spacing** (`{foo}` not `{ foo }`).
+- Biome (`biome.json`): no semicolons, single quotes, 2-space indent, trailing
+  commas, **no bracket spacing** (`{foo}` not `{ foo }`), 80-col width.
 - Use the `node:` prefix on all Node builtin imports (`node:path`, `node:util`, …).
-- Before finishing: `bun run pr` (runs `tsc` typecheck + `prettier --write .`).
+- Before finishing: `bun run pr` (runs `tsc` typecheck + `biome check --write .`).
+  Also `bun run format`, `bun run lint`, `bun run check` for individual steps.
 
 ## Commits — Conventional Commits
 

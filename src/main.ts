@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 import {parseCliArgs} from './cli'
 import {
-  help,
-  version,
   add,
-  remove,
-  list,
-  switchWorktree,
-  exec,
-  install,
-  shellInit,
   complete,
+  exec,
+  help,
+  install,
+  list,
+  remove,
+  shellInit,
+  switchWorktree,
+  version,
 } from './commands'
 import {printError} from './helpers'
 

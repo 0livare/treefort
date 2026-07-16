@@ -38,5 +38,5 @@ whence compdef >/dev/null 2>&1 && compdef _wt wt`
 
 export function shellInit() {
   // Intentionally stdout so \`eval "$(command wt shell-init)"\` picks it up.
-  process.stdout.write(shellScript + '\n')
+  process.stdout.write(`${shellScript}\n`)
 }

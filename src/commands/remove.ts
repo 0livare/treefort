@@ -1,17 +1,17 @@
+import {mkdir, rename} from 'node:fs/promises'
 import {basename, join} from 'node:path'
-import {rename, mkdir} from 'node:fs/promises'
 import chalk from '../chalk'
-import {printError, printSuccess, printWarning} from '../helpers'
 import {
-  listWorktrees,
-  isDirty,
-  pruneWorktrees,
   branchIsPushed,
   deleteBranch,
+  isDirty,
+  listWorktrees,
+  pruneWorktrees,
   spawnDetachedRm,
   type Worktree,
 } from '../git'
-import {select, confirm} from '../select'
+import {printError, printSuccess, printWarning} from '../helpers'
+import {confirm, select} from '../select'
 
 export async function remove(
   name: string | undefined,
@@ -87,8 +87,10 @@ export async function remove(
   const trashed = join(trashDir, `${basename(target.path)}-${Date.now()}`)
   try {
     await rename(target.path, trashed)
-  } catch (e: any) {
-    printError(`could not remove worktree: ${e.message}`)
+  } catch (e) {
+    printError(
+      `could not remove worktree: ${e instanceof Error ? e.message : String(e)}`,
+    )
     process.exit(1)
   }
   await pruneWorktrees()
@@ -113,5 +115,5 @@ export async function remove(
   }
 
   // If we removed the worktree we were in, cd the wrapper back to the root.
-  if (isCurrent) process.stdout.write(root + '\n')
+  if (isCurrent) process.stdout.write(`${root}\n`)
 }

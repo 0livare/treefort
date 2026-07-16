@@ -1,6 +1,6 @@
+import pkg from '../../package.json'
 import chalk from '../chalk'
 import {say} from '../helpers'
-import pkg from '../../package.json'
 
 const wt = chalk.bold.green('wt')
 const c = (s: string) => chalk.cyan(s)
