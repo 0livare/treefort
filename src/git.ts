@@ -1,0 +1,181 @@
+export type Worktree = {
+  path: string
+  branch: string | null // short name, or null when detached
+  head: string // commit hash
+  isMain: boolean
+  isCurrent: boolean
+}
+
+type RunResult = {code: number; stdout: string; stderr: string}
+
+async function run(cmd: string[], cwd?: string): Promise<RunResult> {
+  const proc = Bun.spawn(cmd, {cwd, stdout: 'pipe', stderr: 'pipe'})
+  // Read the pipes before awaiting exit so a full buffer can't deadlock the child.
+  const stdoutP = new Response(proc.stdout).text()
+  const stderrP = new Response(proc.stderr).text()
+  const code = await proc.exited
+  const [stdout, stderr] = await Promise.all([stdoutP, stderrP])
+  return {code, stdout: stdout.trim(), stderr: stderr.trim()}
+}
+
+export async function listWorktrees(): Promise<Worktree[]> {
+  const {code, stdout} = await run(['git', 'worktree', 'list', '--porcelain'])
+  if (code !== 0) return []
+
+  const current = await currentToplevel()
+  const worktrees: Worktree[] = []
+  let cur: {path?: string; head?: string; branch?: string | null} = {}
+
+  const flush = () => {
+    if (!cur.path) return
+    worktrees.push({
+      path: cur.path,
+      branch: cur.branch ?? null,
+      head: cur.head ?? '',
+      isMain: worktrees.length === 0,
+      isCurrent: cur.path === current,
+    })
+    cur = {}
+  }
+
+  for (const line of stdout.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      flush()
+      cur.path = line.slice('worktree '.length)
+    } else if (line.startsWith('HEAD ')) {
+      cur.head = line.slice('HEAD '.length)
+    } else if (line.startsWith('branch ')) {
+      cur.branch = line.slice('branch refs/heads/'.length)
+    } else if (line === 'detached') {
+      cur.branch = null
+    }
+  }
+  flush()
+  return worktrees
+}
+
+// The main worktree is always the first entry of `git worktree list`.
+export async function mainRoot(): Promise<string | null> {
+  const worktrees = await listWorktrees()
+  return worktrees[0]?.path ?? null
+}
+
+async function currentToplevel(): Promise<string | null> {
+  const {code, stdout} = await run(['git', 'rev-parse', '--show-toplevel'])
+  return code === 0 ? stdout : null
+}
+
+// Short branch name of the current worktree, or null when HEAD is detached.
+export async function currentBranch(): Promise<string | null> {
+  const {code, stdout} = await run([
+    'git',
+    'symbolic-ref',
+    '--quiet',
+    '--short',
+    'HEAD',
+  ])
+  return code === 0 && stdout ? stdout : null
+}
+
+export async function branchExists(branch: string): Promise<boolean> {
+  const {code} = await run([
+    'git',
+    'show-ref',
+    '--verify',
+    '--quiet',
+    `refs/heads/${branch}`,
+  ])
+  return code === 0
+}
+
+// The worktree currently checking out `branch`, if any.
+export async function worktreeForBranch(
+  branch: string,
+): Promise<Worktree | null> {
+  const worktrees = await listWorktrees()
+  return worktrees.find((w) => w.branch === branch) ?? null
+}
+
+export async function isDirty(worktreePath: string): Promise<boolean> {
+  const {stdout} = await run(['git', 'status', '--porcelain'], worktreePath)
+  return stdout.length > 0
+}
+
+// Detach a worktree's HEAD at its current commit, freeing its branch.
+export function detach(worktreePath: string): Promise<RunResult> {
+  return run(['git', 'checkout', '--detach'], worktreePath)
+}
+
+export type AddOptions = {
+  path: string
+  branch: string
+  create: boolean // -b a new branch vs check out an existing one
+  startPoint?: string
+  force?: boolean
+}
+
+export function addWorktree(opts: AddOptions): Promise<RunResult> {
+  const args = ['git', 'worktree', 'add']
+  if (opts.force) args.push('--force')
+  if (opts.create) {
+    args.push('-b', opts.branch, opts.path)
+    if (opts.startPoint) args.push(opts.startPoint)
+  } else {
+    args.push(opts.path, opts.branch)
+  }
+  return run(args)
+}
+
+export async function pruneWorktrees(): Promise<void> {
+  await run(['git', 'worktree', 'prune'])
+}
+
+// True only if some remote-tracking ref for `branch` points at the exact same
+// commit as the local branch — i.e. the work is safely pushed.
+export async function branchIsPushed(branch: string): Promise<boolean> {
+  const local = await run([
+    'git',
+    'rev-parse',
+    '--verify',
+    `refs/heads/${branch}`,
+  ])
+  if (local.code !== 0) return false
+
+  const remotes = await run([
+    'git',
+    'for-each-ref',
+    '--format=%(objectname)',
+    `refs/remotes/*/${branch}`,
+  ])
+  if (remotes.code !== 0 || !remotes.stdout) return false
+  return remotes.stdout.split('\n').some((sha) => sha === local.stdout)
+}
+
+export function deleteBranch(branch: string): Promise<RunResult> {
+  return run(['git', 'branch', '-D', branch])
+}
+
+// Fire-and-forget `rm -rf` that outlives this process, so removal returns
+// immediately instead of blocking on the filesystem delete.
+export function spawnDetachedRm(path: string): void {
+  const proc = Bun.spawn(['rm', '-rf', path], {
+    stdout: 'ignore',
+    stderr: 'ignore',
+    stdin: 'ignore',
+  })
+  proc.unref()
+}
+
+export async function globalExcludesFile(): Promise<string | null> {
+  const {code, stdout} = await run([
+    'git',
+    'config',
+    '--global',
+    'core.excludesfile',
+  ])
+  return code === 0 && stdout ? stdout : null
+}
+
+export async function setGlobalExcludesFile(path: string): Promise<void> {
+  await run(['git', 'config', '--global', 'core.excludesfile', path])
+}
