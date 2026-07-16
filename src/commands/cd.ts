@@ -1,6 +1,8 @@
 import {existsSync} from 'node:fs'
+import {rank, recordAccess} from '../frecency'
 import {listWorktrees, worktreeName} from '../git'
 import {printError} from '../helpers'
+import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
 
 // Print the path to cd into (the shell wrapper does the actual cd).
@@ -27,17 +29,32 @@ export async function cd(target: string) {
   } else if (target === 'root' || target === '@') {
     dest = root
   } else {
-    const match = worktrees.find(
+    // Exact name/branch match wins; otherwise fall back to fuzzy matching and,
+    // when several match, pick the highest-frecency one.
+    const exact = worktrees.find(
       (w) => worktreeName(w) === target || w.branch === target,
     )
-    if (!match) {
-      printError(`no worktree named "${target}"`)
-      process.exit(1)
+    if (exact) {
+      dest = exact.path
+    } else {
+      const matches = worktrees.filter(
+        (w) =>
+          matchesQuery(target, worktreeName(w)) ||
+          (w.branch != null && matchesQuery(target, w.branch)),
+      )
+      if (matches.length === 0) {
+        printError(`no worktree named "${target}"`)
+        process.exit(1)
+      }
+      const best =
+        matches.length === 1 ? matches[0] : (await rank(root, matches))[0]
+      dest = best.path
     }
-    dest = match.path
   }
 
   // Remember where we were so `wt cd -` can bring us back (and toggle).
   if (current && current !== dest) await setPrevious(root, current)
+  // Bump frecency for the destination.
+  await recordAccess(root, dest)
   process.stdout.write(`${dest}\n`)
 }

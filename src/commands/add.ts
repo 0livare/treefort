@@ -1,5 +1,6 @@
 import {mkdir} from 'node:fs/promises'
 import {dirname, join} from 'node:path'
+import {recordAccess} from '../frecency'
 import {
   addWorktree,
   branchExists,
@@ -94,6 +95,8 @@ export async function add(
   // Remember where we were so `wt cd -` can bring us back.
   const from = await currentWorktree()
   if (from && from !== path) await setPrevious(root, from)
+  // Bump frecency for the worktree we're entering.
+  await recordAccess(root, path)
 
   // The single stdout line: where the shell wrapper should cd.
   process.stdout.write(`${path}\n`)
