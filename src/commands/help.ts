@@ -27,7 +27,7 @@ export function help() {
     `  ${wt} ${c('list')}${chalk.dim(', ')}${c('ls')}                  List all worktrees`,
   )
   say(
-    `  ${wt} ${c('cd')} ${c('[name]')}                   cd to a worktree (root if omitted)`,
+    `  ${wt} ${c('cd')} ${c('[name|-]')}                 cd to a worktree (root if omitted, - = previous)`,
   )
   say(
     `  ${wt} ${c('root')}                        cd back to the root worktree`,

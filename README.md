@@ -46,6 +46,9 @@ wt list        # or: wt ls
 wt cd feature-x
 wt cd          # or: wt cd root
 
+# cd to the previous worktree, toggling back and forth (like `cd -`)
+wt cd -
+
 # cd back to the root worktree (alias for `wt cd` with no argument)
 wt root
 

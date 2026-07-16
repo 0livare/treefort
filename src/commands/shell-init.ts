@@ -13,7 +13,10 @@ const shellScript = `wt() {
   esac
   local dir
   dir=$(command wt "$@") || return
-  [ -n "$dir" ] && cd "$dir"
+  if [ -n "$dir" ]; then
+    export WT_PREV_WORKTREE="$PWD"
+    cd "$dir"
+  fi
 }
 
 _wt() {
