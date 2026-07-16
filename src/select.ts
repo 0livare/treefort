@@ -91,3 +91,35 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
     process.stdin.on('data', onKey)
   })
 }
+
+// Raw-mode yes/no prompt on stderr. Enter takes the default; esc/ctrl-c = no.
+export async function confirm(
+  question: string,
+  defaultYes = false,
+): Promise<boolean> {
+  const hint = defaultYes ? 'Y/n' : 'y/N'
+  tty.write(chalk.bold(`  ${question}`) + chalk.dim(` [${hint}] `))
+
+  process.stdin.setRawMode(true)
+  process.stdin.resume()
+  process.stdin.setEncoding('utf8')
+
+  return new Promise((resolve) => {
+    const onKey = (key: string) => {
+      let result: boolean | null = null
+      if (key === 'y' || key === 'Y') result = true
+      else if (key === 'n' || key === 'N') result = false
+      else if (key === '\r') result = defaultYes
+      else if (key === '\x03' || key === '\x1b') result = false
+      if (result === null) return
+
+      process.stdin.removeListener('data', onKey)
+      process.stdin.setRawMode(false)
+      process.stdin.pause()
+      tty.write((result ? chalk.green('yes') : chalk.dim('no')) + '\n')
+      resolve(result)
+    }
+
+    process.stdin.on('data', onKey)
+  })
+}

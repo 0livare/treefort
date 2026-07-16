@@ -11,7 +11,7 @@ import {
   spawnDetachedRm,
   type Worktree,
 } from '../git'
-import {select} from '../select'
+import {select, confirm} from '../select'
 
 export async function remove(
   name: string | undefined,
@@ -31,6 +31,7 @@ export async function remove(
   }
 
   let target: Worktree
+  let interactive = false
   if (name) {
     const found = removable.find(
       (w) => basename(w.path) === name || w.branch === name,
@@ -41,6 +42,7 @@ export async function remove(
     }
     target = found
   } else {
+    interactive = true
     const chosen = await select<Worktree>({
       items: removable,
       header: [chalk.bold('  Remove worktree'), ''],
@@ -63,6 +65,17 @@ export async function remove(
   const isCurrent = target.isCurrent
   const branch = target.branch
 
+  // Decide branch deletion. The -d flag is "guarded" — only delete if the work
+  // is safely pushed. An explicit interactive "yes" is a deliberate choice, so
+  // it force-deletes regardless of remote state.
+  let branchDeleteMode: 'none' | 'guarded' | 'force' = opts.deleteBranch
+    ? 'guarded'
+    : 'none'
+  if (interactive && branch && branchDeleteMode === 'none') {
+    if (await confirm(`Delete branch ${branch} too?`))
+      branchDeleteMode = 'force'
+  }
+
   // Run remaining git commands from the main root: if we're removing the
   // worktree we're standing in, our cwd is about to disappear.
   process.chdir(root)
@@ -83,9 +96,10 @@ export async function remove(
 
   printSuccess(`removed ${basename(target.path)} (deleting in background)`)
 
-  // Optionally delete the branch, but only when it's safely pushed.
-  if (opts.deleteBranch && branch) {
-    if (await branchIsPushed(branch)) {
+  // Delete the branch when requested. Guarded (-d) deletes only if pushed;
+  // an explicit interactive "yes" (force) deletes unconditionally.
+  if (branchDeleteMode !== 'none' && branch) {
+    if (branchDeleteMode === 'force' || (await branchIsPushed(branch))) {
       const res = await deleteBranch(branch)
       if (res.code === 0) printSuccess(`deleted branch ${branch}`)
       else printError(res.stderr || `could not delete branch ${branch}`)
@@ -94,7 +108,7 @@ export async function remove(
         `kept branch ${branch} — no remote ref points at its latest commit`,
       )
     }
-  } else if (opts.deleteBranch && !branch) {
+  } else if (branchDeleteMode !== 'none' && !branch) {
     printWarning('worktree was detached — no branch to delete')
   }
 
