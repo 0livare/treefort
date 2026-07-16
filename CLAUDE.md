@@ -53,6 +53,9 @@ Examples from this repo: `feat: add zsh tab completion`,
 
 ### Always commit atomically; never push
 
+- **Commit when done.** Once a change is complete and `bun run pr` (typecheck +
+  lint) passes, commit it without waiting to be asked. If checks fail, fix them
+  first — never commit code that doesn't typecheck or lint clean.
 - **Commit atomically**: one logical change per commit. Split unrelated changes
   into separate commits (e.g. a tooling change and a feature are two commits).
   Each commit should stand on its own and leave the code building.

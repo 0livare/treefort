@@ -54,7 +54,7 @@ export function help() {
     `  ${wt} ${c('add')}                         Move current branch into its own worktree`,
   )
   say(
-    `  ${wt} ${c('rm')} ${c('feature-x')} ${c('-d')}             Remove worktree and its branch`,
+    `  ${wt} ${c('rm')} ${c('feature-x')} ${c('-k')}             Remove worktree but keep its branch`,
   )
   say(
     `  ${wt} ${c('feature-x')}                    Shorthand for ${wt} ${c('cd')} ${c('feature-x')}`,
@@ -66,7 +66,10 @@ export function help() {
     `  ${c('-f')}, ${c('--force')}                     Skip the dirty-worktree / checkout guard`,
   )
   say(
-    `  ${c('-d')}, ${c('--delete-branch')}             Also delete the branch (if safely pushed)`,
+    `  ${c('-k')}, ${c('--keep-branch')}               Keep the branch (rm deletes it when safe)`,
+  )
+  say(
+    `  ${c('-D')}, ${c('--force-branch')}              Delete the branch even if commits would be lost`,
   )
   say(`  ${c('-v')}, ${c('--version')}                   Print version number`)
   say(

@@ -7,7 +7,8 @@ export function parseCliArgs() {
       args: process.argv.slice(2),
       options: {
         force: {type: 'boolean', short: 'f'},
-        'delete-branch': {type: 'boolean', short: 'd'},
+        'keep-branch': {type: 'boolean', short: 'k'},
+        'force-branch': {type: 'boolean', short: 'D'},
         help: {type: 'boolean', short: 'h'},
         version: {type: 'boolean', short: 'v'},
       },

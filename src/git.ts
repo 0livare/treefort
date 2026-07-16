@@ -151,25 +151,24 @@ export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
 }
 
-// True only if some remote-tracking ref for `branch` points at the exact same
-// commit as the local branch — i.e. the work is safely pushed.
-export async function branchIsPushed(branch: string): Promise<boolean> {
-  const local = await run([
-    'git',
-    'rev-parse',
-    '--verify',
-    `refs/heads/${branch}`,
-  ])
-  if (local.code !== 0) return false
-
-  const remotes = await run([
+// True if deleting `branch` would lose no commits: its tip commit is contained
+// in the history of some *other* ref — another local branch or any
+// remote-tracking ref. (Covers both "merged into main" and "pushed".)
+export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
+  const {code, stdout} = await run([
     'git',
     'for-each-ref',
-    '--format=%(objectname)',
-    `refs/remotes/*/${branch}`,
+    '--format=%(refname)',
+    '--contains',
+    branch,
+    'refs/heads',
+    'refs/remotes',
   ])
-  if (remotes.code !== 0 || !remotes.stdout) return false
-  return remotes.stdout.split('\n').some((sha) => sha === local.stdout)
+  if (code !== 0) return false
+  return stdout
+    .split('\n')
+    .filter(Boolean)
+    .some((ref) => ref !== `refs/heads/${branch}`)
 }
 
 export function deleteBranch(branch: string): Promise<RunResult> {

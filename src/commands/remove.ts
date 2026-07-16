@@ -1,7 +1,7 @@
 import {mkdir, rename} from 'node:fs/promises'
 import {basename, join} from 'node:path'
 import {
-  branchIsPushed,
+  branchIsSafeToDelete,
   deleteBranch,
   listWorktrees,
   pruneWorktrees,
@@ -10,12 +10,11 @@ import {
   worktreeStatus,
 } from '../git'
 import {printError, printInfo, printSuccess, printWarning} from '../helpers'
-import {confirm} from '../select'
 import {pickWorktree} from '../worktree-picker'
 
 export async function remove(
   name: string | undefined,
-  opts: {force?: boolean; deleteBranch?: boolean},
+  opts: {force?: boolean; keepBranch?: boolean; forceBranch?: boolean},
 ) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
@@ -31,7 +30,6 @@ export async function remove(
   }
 
   let target: Worktree
-  let interactive = false
   if (name) {
     const found = removable.find(
       (w) => basename(w.path) === name || w.branch === name,
@@ -42,7 +40,6 @@ export async function remove(
     }
     target = found
   } else {
-    interactive = true
     // Default the cursor to the worktree you're in, so Enter removes it.
     const currentIndex = removable.findIndex((w) => w.isCurrent)
     const chosen = await pickWorktree(removable, {
@@ -69,16 +66,14 @@ export async function remove(
   const isCurrent = target.isCurrent
   const branch = target.branch
 
-  // Decide branch deletion. The -d flag is "guarded" — only delete if the work
-  // is safely pushed. An explicit interactive "yes" is a deliberate choice, so
-  // it force-deletes regardless of remote state.
-  let branchDeleteMode: 'none' | 'guarded' | 'force' = opts.deleteBranch
-    ? 'guarded'
-    : 'none'
-  if (interactive && branch && branchDeleteMode === 'none') {
-    if (await confirm(`Delete branch ${branch} too?`))
-      branchDeleteMode = 'force'
-  }
+  // Branch deletion. By default we delete it, but only when that's safe — i.e.
+  // its commits live on in another branch (local or remote), so nothing is
+  // lost. --keep-branch never deletes; --force-branch deletes unconditionally.
+  const branchDeleteMode: 'none' | 'safe' | 'force' = opts.keepBranch
+    ? 'none'
+    : opts.forceBranch
+      ? 'force'
+      : 'safe'
 
   // Run remaining git commands from the main root: if we're removing the
   // worktree we're standing in, our cwd is about to disappear.
@@ -102,20 +97,25 @@ export async function remove(
 
   printSuccess(`removed ${basename(target.path)} (deleting in background)`)
 
-  // Delete the branch when requested. Guarded (-d) deletes only if pushed;
-  // an explicit interactive "yes" (force) deletes unconditionally.
-  if (branchDeleteMode !== 'none' && branch) {
-    if (branchDeleteMode === 'force' || (await branchIsPushed(branch))) {
+  // Delete the branch unless asked to keep it. In 'safe' mode we only delete
+  // when the commits survive elsewhere; --force-branch deletes regardless.
+  if (branchDeleteMode !== 'none') {
+    if (!branch) {
+      // Only worth mentioning when deletion was asked for explicitly.
+      if (opts.forceBranch)
+        printWarning('worktree was detached — no branch to delete')
+    } else if (
+      branchDeleteMode === 'force' ||
+      (await branchIsSafeToDelete(branch))
+    ) {
       const res = await deleteBranch(branch)
       if (res.code === 0) printSuccess(`deleted branch ${branch}`)
       else printError(res.stderr || `could not delete branch ${branch}`)
     } else {
       printWarning(
-        `kept branch ${branch} — no remote ref points at its latest commit`,
+        `kept branch ${branch} — its commits aren't in any other branch (use --force-branch to delete anyway)`,
       )
     }
-  } else if (branchDeleteMode !== 'none' && !branch) {
-    printWarning('worktree was detached — no branch to delete')
   }
 
   // If we removed the worktree we were in, cd the wrapper back to the root.

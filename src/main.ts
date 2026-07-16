@@ -43,7 +43,8 @@ async function main() {
     case 'remove':
       await remove(rest[0], {
         force: cli.values.force,
-        deleteBranch: cli.values['delete-branch'],
+        keepBranch: cli.values['keep-branch'],
+        forceBranch: cli.values['force-branch'],
       })
       break
     case 'list':
