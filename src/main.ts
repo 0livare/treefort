@@ -7,6 +7,7 @@ import {
   remove,
   list,
   switchWorktree,
+  exec,
   install,
   shellInit,
 } from './commands'
@@ -45,6 +46,9 @@ async function main() {
     case 'list':
     case 'ls':
       await list()
+      break
+    case 'exec':
+      await exec(rest[0], rest.slice(1))
       break
     case 'install':
       await install()

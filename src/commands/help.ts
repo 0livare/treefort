@@ -27,6 +27,9 @@ export function help() {
     `  ${wt} ${c('list')}${chalk.dim(', ')}${c('ls')}                  List all worktrees`,
   )
   say(
+    `  ${wt} ${c('exec')} ${c('<name>')} ${c('--')} ${c('<cmd>')}       Run a command in a worktree`,
+  )
+  say(
     `  ${wt} ${c('install')}                     Set up the shell wrapper + git excludes`,
   )
   say(
