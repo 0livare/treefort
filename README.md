@@ -1,8 +1,92 @@
-# Git Worktree CLI (`wt`)
+# `wt` — git worktrees without the work
 
-A CLI to make working with [git worktrees](https://git-scm.com/docs/git-worktree) effortless — add, switch between, and remove worktrees with a single command, and get `cd`'d into the right directory automatically.
+Git worktrees let you check out multiple branches at once, each in its own directory. AI has skyrocketed the use of worktrees so that multiple agents can work simultaneously without stepping on each other's toes.
 
-Worktrees live under `.wkt/<name>` at the root of your repo.
+But the raw `git worktree` commands are clunky. You have manage all the file paths yourself:
+- come up with the paths
+- remember the paths
+- `cd` back and forth between them
+- clean them up yourself when you're done
+
+
+`wt` makes worktrees effortless. **Add, switch, and remove worktrees in a single
+command and land in the right directory automatically.**
+
+```sh
+wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.wkt/feature-x
+wt root              # jump back to the root worktree          --> pwd: /repo
+wt feat              # fuzzy-jump back to feature-x it later   --> pwd: /repo/.wkt/feature-x
+wt rm                # gone, instantly                         --> pwd: /repo
+```
+
+
+## Why you'll like it
+
+### 🏃 You end up *inside* the worktree every time
+
+No remembering where the thing lives. No manually annoying `cd ../worktrees/foobar`.
+
+`wt add`, `wt cd`, and the interactive picker all drop your shell straight into the right directory. You don't have to think about it.
+
+
+### 🧠 Fuzzy + frecency navigation, like `zoxide` for worktrees
+
+You don't type paths. You don't even have to type full names. Type a fragment and `wt` finds it:
+
+```sh
+wt reg    # matches regularExpressionParser or codeFirstEndpointRegistry or coreRegularizer
+wt cd reg # equivalent. cd is the default command when one isn't specified
+```
+
+When a fragment matches more than one worktree, `wt` picks the one you actually mean, ranked by **frecency** (how *frequently* and *recently* you've visited it). The worktrees you live in float to the top; the ones you forgot about sink.
+
+### 🎛️ An interactive picker, one keystroke away
+
+Forgot the name entirely? Just run `wt` with no arguments and pick from a list. Same for removing them.
+
+```sh
+wt      # pick a worktree from a list, then automatically cd into it
+```
+
+### 📦 Worktrees live *inside* your repo, not scattered beside it
+
+Everything lands under `.wkt/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.wkt/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories.
+
+### ⚡️ Removal returns *immediately*
+
+`wt rm` deregisters the worktree and moves it out of the way _instantly_, then deletes the files in the background. Your prompt comes back ***now*** — not in 30s after `rm -rf` finishes churning through `node_modules`.
+
+```bash
+wt rm <fuzzy> # same fuzzy frecency matching as `wt` & `wt cd`
+wt rm         # with no args either removes the current worktree 
+              # or opens the interactive picker (if you're at the root worktree)
+```
+
+### 🛟 Branch cleanup that won't lose your work
+
+`wt rm feature-x` removes the worktree *and* deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch, so nothing is lost. If the commits exist nowhere else, the branch is kept. 
+
+Need to override? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`) deletes it even if commits would be lost.
+
+### 🧹 Sweep up merged work in one shot
+
+Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main`. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.wkt/` is back to just the things you're still working on.
+
+### 🌱 Turn your current branch into a worktree
+
+Want to create a worktree around an existing branch? No problem. Run `wt add` with no name and your current branch graduates into a fresh worktree (supplying a branch name also works), freeing up the main worktree behind you.
+
+### 🔭 Reach into a worktree without leaving yours
+
+```sh
+wt exec feature-x -- bun test
+wt exec @ -- git pull          # @ = the main worktree
+```
+
+---
+
+Oh, and it's tiny and fast: **Bun + TypeScript, one runtime dependency, no build
+step.**
 
 ## Installation
 
@@ -16,18 +100,22 @@ wt install    # sets up the shell wrapper + global gitignore (one time)
 
 `wt install` is idempotent. It:
 
-1. Adds `eval "$(command wt shell-init)"` to your `~/.zshrc`. This defines a `wt` shell function that wraps the binary and performs the actual `cd` — a subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
-2. Ensures git's global excludes file (`core.excludesfile`, defaulting to `~/.gitignore_global`) contains `.wkt/`, so worktrees are ignored in every repo.
+1. Adds `eval "$(command wt shell-init)"` to your `~/.zshrc`. This defines a `wt`
+   shell function that wraps the binary and performs the actual `cd` 
+   > A subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
+2. Ensures git's global excludes file (`core.excludesfile`, defaulting to
+   `~/.gitignore_global`) contains `.wkt/`, so worktrees are ignored in every
+   repo.
 
 After running it, open a new shell or `source ~/.zshrc`.
 
 ## Usage
 
 ```sh
-# Interactive worktree switcher — pick one and cd into it
+# Interactive worktree switcher — pick one and you're there
 wt
 
-# Add a worktree and cd into it.
+# Add a worktree and automatically cd into it.
 #   - if the branch exists, it's checked out
 #   - otherwise a new branch is created off HEAD
 wt add feature-x
@@ -36,37 +124,38 @@ wt add feature-x
 wt add feature-x origin/main
 
 # No name: move your *current* branch into its own worktree.
-# (Detaches the main worktree's HEAD to free the branch, then cds you in.)
 wt add
 
 # List all worktrees (current is marked, dirty ones flagged)
 wt list        # or: wt ls
 
-# cd to a worktree by name or branch
+# move to a worktree by name or branch (fuzzy with frecency — a fragment is enough)
 wt cd feature-x
+wt feature-x       # shorthand for `wt cd feature-x`
+wt                 # no args opens the interactive picker (same as `wt cd`)
 
-# no argument opens the interactive picker (same as bare `wt`)
-wt cd
-
-# `wt <name>` is shorthand for `wt cd <name>` (like `pnpm <script>`)
-wt feature-x
-
-# cd to the previous worktree, toggling back and forth (like `cd -`)
-wt cd - # or just `wt -`
+# move to the previous worktree, toggling back and forth (like `cd -`)
+wt cd -        # or just: wt -
 
 # cd to the root (main) worktree
-wt cd @        # or: wt root
+wt root
+wt cd @        # equivalent. @ is a special alias for the main worktree
+wt @           # also equivalent
 
 # Remove a worktree. The directory is deregistered and moved out of the way
 # instantly, then deleted in the background — the command returns immediately.
+# Its branch is also deleted, but only if that's safe (its commits live on in
+# another local or remote branch); otherwise the branch is kept.
 wt rm feature-x
 
 # Remove interactively (pick from a list)
 wt rm
 
-# Remove and also delete the branch — only if a remote ref points at its
-# latest commit (i.e. the work is safely pushed), otherwise the branch is kept.
-wt rm feature-x -d
+# Remove the worktree but always keep its branch
+wt rm feature-x -k        # or: --keep-branch
+
+# Delete the branch even if its commits aren't anywhere else (may lose work)
+wt rm feature-x -D        # or: --force-branch
 
 # Force-remove a worktree with uncommitted changes
 wt rm feature-x --force
@@ -82,15 +171,16 @@ wt exec feature-x -- bun test
 wt exec @ -- git status
 ```
 
-Tab completion (worktree names for `rm`/`cd`/`exec`, branch names for `add`) is set up
-automatically by `wt install` for zsh.
+Tab completion (worktree names for `rm`/`cd`/`exec`, branch names for `add`) is
+set up automatically by `wt install` for zsh.
 
 ### Flags
 
 | Flag                    | Description                                    |
 | ----------------------- | ---------------------------------------------- |
 | `-f`, `--force`         | Skip the dirty-worktree / checkout guard       |
-| `-d`, `--delete-branch` | Also delete the branch (only if safely pushed) |
+| `-k`, `--keep-branch`   | Keep the branch (`rm` deletes it when safe)    |
+| `-D`, `--force-branch`  | Delete the branch even if commits would be lost |
 | `-v`, `--version`       | Print version number                           |
 | `-h`, `--help`          | Print help information                         |
 
