@@ -17,10 +17,10 @@ const shellScript = `wt() {
 }
 
 _wt() {
-  local -a subcmds
-  subcmds=(add rm list ls cd root exec install shell-init)
   if (( CURRENT == 2 )); then
-    compadd -- $subcmds
+    # \`wt <name>\` is shorthand for \`wt cd <name>\`, so complete worktrees here
+    # (same candidates as \`wt cd\`), not the subcommands.
+    compadd -- \${(f)"$(command wt __complete cd 2>/dev/null)"}
     return
   fi
   if (( CURRENT == 3 )); then
