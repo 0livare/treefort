@@ -24,7 +24,7 @@ export async function listWorktrees(): Promise<Worktree[]> {
   const {code, stdout} = await run(['git', 'worktree', 'list', '--porcelain'])
   if (code !== 0) return []
 
-  const current = await currentToplevel()
+  const current = await currentWorktree()
   const worktrees: Worktree[] = []
   let cur: {path?: string; head?: string; branch?: string | null} = {}
 
@@ -67,7 +67,8 @@ export function worktreeName(w: Worktree): string {
   return w.isMain ? 'root' : basename(w.path)
 }
 
-async function currentToplevel(): Promise<string | null> {
+// Absolute path of the worktree the cwd is in (its top level), or null.
+export async function currentWorktree(): Promise<string | null> {
   const {code, stdout} = await run(['git', 'rev-parse', '--show-toplevel'])
   return code === 0 ? stdout : null
 }

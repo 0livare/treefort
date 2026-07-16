@@ -1,4 +1,5 @@
 import {listWorktrees} from '../git'
+import {setPrevious} from '../prev'
 import {pickWorktree} from '../worktree-picker'
 
 export async function switchWorktree() {
@@ -13,5 +14,10 @@ export async function switchWorktree() {
   })
 
   if (!chosen) process.exit(0)
+
+  const current = worktrees[currentIndex]?.path
+  if (current && current !== chosen.path) {
+    await setPrevious(worktrees[0].path, current)
+  }
   process.stdout.write(`${chosen.path}\n`)
 }

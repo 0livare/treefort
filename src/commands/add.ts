@@ -4,11 +4,13 @@ import {
   addWorktree,
   branchExists,
   currentBranch,
+  currentWorktree,
   detach,
   mainRoot,
   worktreeForBranch,
 } from '../git'
 import {printError, printInfo, printSuccess} from '../helpers'
+import {setPrevious} from '../prev'
 
 export async function add(
   name: string | undefined,
@@ -89,6 +91,10 @@ export async function add(
       ? `created ${branch} at .wkt/${branch}`
       : `added worktree for ${branch} at .wkt/${branch}`,
   )
+  // Remember where we were so `wt cd -` can bring us back.
+  const from = await currentWorktree()
+  if (from && from !== path) await setPrevious(root, from)
+
   // The single stdout line: where the shell wrapper should cd.
   process.stdout.write(`${path}\n`)
 }
