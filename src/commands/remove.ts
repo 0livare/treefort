@@ -43,8 +43,11 @@ export async function remove(
     target = found
   } else {
     interactive = true
+    // Default the cursor to the worktree you're in, so Enter removes it.
+    const currentIndex = removable.findIndex((w) => w.isCurrent)
     const chosen = await pickWorktree(removable, {
       title: 'Remove worktree',
+      initialIndex: currentIndex >= 0 ? currentIndex : undefined,
       emptyMessage: 'no worktrees to remove',
     })
     if (!chosen) process.exit(0)
