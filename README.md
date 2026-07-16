@@ -62,6 +62,9 @@ wt exec feature-x -- bun test
 wt exec @ -- git status
 ```
 
+Tab completion (worktree names for `rm`/`exec`, branch names for `add`) is set up
+automatically by `wt install` for zsh.
+
 ### Flags
 
 | Flag                    | Description                                    |

@@ -10,6 +10,7 @@ import {
   exec,
   install,
   shellInit,
+  complete,
 } from './commands'
 import {printError} from './helpers'
 
@@ -55,6 +56,9 @@ async function main() {
       break
     case 'shell-init':
       shellInit()
+      break
+    case '__complete':
+      await complete(rest[0])
       break
     default:
       printError(`unknown command: ${command}`)

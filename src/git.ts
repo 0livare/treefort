@@ -1,3 +1,5 @@
+import {basename} from 'node:path'
+
 export type Worktree = {
   path: string
   branch: string | null // short name, or null when detached
@@ -164,6 +166,25 @@ export function spawnDetachedRm(path: string): void {
     stdin: 'ignore',
   })
   proc.unref()
+}
+
+// Names of the linked (non-main) worktrees, for shell completion.
+export async function worktreeNames(): Promise<string[]> {
+  const worktrees = await listWorktrees()
+  return worktrees.filter((w) => !w.isMain).map((w) => basename(w.path))
+}
+
+// Local + remote branch names, for `wt add` completion.
+export async function branchNames(): Promise<string[]> {
+  const {code, stdout} = await run([
+    'git',
+    'for-each-ref',
+    '--format=%(refname:short)',
+    'refs/heads',
+    'refs/remotes',
+  ])
+  if (code !== 0) return []
+  return stdout.split('\n').filter((n) => n && !n.endsWith('/HEAD'))
 }
 
 export async function globalExcludesFile(): Promise<string | null> {

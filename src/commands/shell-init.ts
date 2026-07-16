@@ -1,4 +1,4 @@
-// The zsh wrapper, emitted for `eval "$(command wt shell-init)"`.
+// The zsh wrapper + completion, emitted for `eval "$(command wt shell-init)"`.
 //
 // The wrapper shadows the `wt` binary and performs the shell-level cd: it
 // captures the binary's stdout (a single directory path, or nothing) and cds
@@ -14,7 +14,27 @@ const shellScript = `wt() {
   local dir
   dir=$(command wt "$@") || return
   [ -n "$dir" ] && cd "$dir"
-}`
+}
+
+_wt() {
+  local -a subcmds
+  subcmds=(add rm list ls exec install shell-init)
+  if (( CURRENT == 2 )); then
+    compadd -- $subcmds
+    return
+  fi
+  if (( CURRENT == 3 )); then
+    case "\${words[2]}" in
+      rm|remove|exec)
+        compadd -- \${(f)"$(command wt __complete worktrees 2>/dev/null)"}
+        ;;
+      add)
+        compadd -- \${(f)"$(command wt __complete branches 2>/dev/null)"}
+        ;;
+    esac
+  fi
+}
+whence compdef >/dev/null 2>&1 && compdef _wt wt`
 
 export function shellInit() {
   // Intentionally stdout so \`eval "$(command wt shell-init)"\` picks it up.
