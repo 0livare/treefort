@@ -1,6 +1,33 @@
 import chalk from './chalk'
+import {printError} from './helpers'
 
 const tty = process.stderr
+
+// True when stdin can host a raw-mode prompt (i.e. we're on a terminal).
+export const isInteractive = () => process.stdin.isTTY === true
+
+// Split a raw input chunk into individual key sequences, so batched arrow
+// presses (e.g. '\x1b[B\x1b[B' arriving in one chunk) are all handled.
+function splitKeys(chunk: string): string[] {
+  const keys: string[] = []
+  for (let i = 0; i < chunk.length; i++) {
+    if (chunk[i] === '\x1b' && chunk[i + 1] === '[') {
+      let end = i + 2
+      while (end < chunk.length && !/[@-~]/.test(chunk[end])) end++
+      keys.push(chunk.slice(i, end + 1))
+      i = end
+    } else {
+      keys.push(chunk[i])
+    }
+  }
+  return keys
+}
+
+// Leave the terminal usable if we die mid-prompt (cursor shown, raw mode off).
+const restoreTerminal = () => {
+  if (process.stdin.isTTY) process.stdin.setRawMode(false)
+  tty.write('\x1b[?25h')
+}
 
 export type SelectOptions<T> = {
   items: T[]
@@ -22,6 +49,11 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   if (items.length === 0) {
     tty.write(chalk.yellow(`  ${opts.emptyMessage ?? 'Nothing to select'}\n`))
     return null
+  }
+
+  if (!isInteractive()) {
+    printError('interactive picker requires a terminal')
+    process.exit(1)
   }
 
   let cursor = opts.initialIndex ?? 0
@@ -47,6 +79,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
     tty.write(chalk.dim(`  ${hint}\n`))
   }
 
+  process.on('exit', restoreTerminal)
   tty.write('\x1b[?25l') // hide cursor
   render(true)
 
@@ -55,8 +88,12 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   process.stdin.setEncoding('utf8')
 
   return new Promise((resolve) => {
+    let done = false
+
     const cleanup = () => {
-      process.stdin.removeListener('data', onKey)
+      done = true
+      process.stdin.removeListener('data', onData)
+      process.removeListener('exit', restoreTerminal)
       process.stdin.setRawMode(false)
       process.stdin.pause()
       tty.write(`\x1b[${totalLines}A\x1b[J`)
@@ -88,7 +125,14 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
       }
     }
 
-    process.stdin.on('data', onKey)
+    const onData = (chunk: string) => {
+      for (const key of splitKeys(chunk)) {
+        if (done) return
+        onKey(key)
+      }
+    }
+
+    process.stdin.on('data', onData)
   })
 }
 
@@ -97,6 +141,10 @@ export async function confirm(
   question: string,
   defaultYes = false,
 ): Promise<boolean> {
+  // Callers should pre-check isInteractive() to give a better error; this is
+  // just a backstop so we never crash calling setRawMode off a terminal.
+  if (!isInteractive()) return false
+
   const hint = defaultYes ? 'Y/n' : 'y/N'
   tty.write(chalk.bold(`  ${question}`) + chalk.dim(` [${hint}] `))
 

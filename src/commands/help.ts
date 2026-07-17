@@ -42,16 +42,19 @@ export function help() {
     `  ${wt} ${c('install')}                     Set up the shell wrapper + git excludes`,
   )
   say(
-    `  ${wt} ${c('shell-init')}                  Print the zsh wrapper function`,
+    `  ${wt} ${c('shell-init')} ${c('[shell]')}          Print the shell wrapper (zsh or bash)`,
   )
 
   say()
   say(chalk.bold('Examples:'))
   say(
-    `  ${wt} ${c('add')} ${c('feature-x')}               New branch feature-x off HEAD, cd in`,
+    `  ${wt} ${c('add')} ${c('feature-x')}               New branch off the root worktree, cd in`,
   )
   say(
     `  ${wt} ${c('add')} ${c('feature-x origin/main')}   New branch off origin/main`,
+  )
+  say(
+    `  ${wt} ${c('add')} ${c('feature-x .')}             New branch off the current worktree`,
   )
   say(
     `  ${wt} ${c('add')}                         Move current branch into its own worktree`,

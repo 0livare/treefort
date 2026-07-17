@@ -21,11 +21,17 @@ export async function exec(target: string | undefined, command: string[]) {
   const root = worktrees[0].path
   const cwd = target ? await resolveWorktree({target, worktrees, root}) : root
 
-  const proc = Bun.spawn(command, {
-    cwd,
-    stdin: 'inherit',
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
+  let proc: ReturnType<typeof Bun.spawn>
+  try {
+    proc = Bun.spawn(command, {
+      cwd,
+      stdin: 'inherit',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+  } catch {
+    printError(`command not found: ${command[0]}`)
+    process.exit(127)
+  }
   process.exit(await proc.exited)
 }

@@ -71,11 +71,17 @@ async function main() {
       // Explicit `wt cd [target]`; no target opens the picker.
       await cd(rest[0])
       break
+    case 'help':
+      help()
+      break
+    case 'version':
+      version()
+      break
     case 'install':
       await install()
       break
     case 'shell-init':
-      shellInit()
+      shellInit(rest[0])
       break
     case '__complete':
       await complete(rest[0])
@@ -88,4 +94,9 @@ async function main() {
   }
 }
 
-await main()
+try {
+  await main()
+} catch (e) {
+  printError(e instanceof Error ? e.message : String(e))
+  process.exit(1)
+}

@@ -10,6 +10,7 @@ export type Worktree = {
   branch: string | null // short name, or null when detached
   head: string // commit hash
   isMain: boolean
+  isBare: boolean // bare-clone layout: the main entry is the bare repo itself
   isCurrent: boolean
 }
 
@@ -31,7 +32,12 @@ export async function listWorktrees(): Promise<Worktree[]> {
 
   const current = await currentWorktree()
   const worktrees: Worktree[] = []
-  let cur: {path?: string; head?: string; branch?: string | null} = {}
+  let cur: {
+    path?: string
+    head?: string
+    branch?: string | null
+    bare?: boolean
+  } = {}
 
   const flush = () => {
     if (!cur.path) return
@@ -40,6 +46,7 @@ export async function listWorktrees(): Promise<Worktree[]> {
       branch: cur.branch ?? null,
       head: cur.head ?? '',
       isMain: worktrees.length === 0,
+      isBare: cur.bare ?? false,
       isCurrent: cur.path === current,
     })
     cur = {}
@@ -55,6 +62,8 @@ export async function listWorktrees(): Promise<Worktree[]> {
       cur.branch = line.slice('branch refs/heads/'.length)
     } else if (line === 'detached') {
       cur.branch = null
+    } else if (line === 'bare') {
+      cur.bare = true
     }
   }
   flush()
@@ -62,14 +71,23 @@ export async function listWorktrees(): Promise<Worktree[]> {
 }
 
 // The main worktree is always the first entry of `git worktree list`.
-export async function mainRoot(): Promise<string | null> {
+export async function mainWorktree(): Promise<Worktree | null> {
   const worktrees = await listWorktrees()
-  return worktrees[0]?.path ?? null
+  return worktrees[0] ?? null
 }
 
-// Display / lookup name: the main worktree is "root", others use their dir name.
+export async function mainRoot(): Promise<string | null> {
+  return (await mainWorktree())?.path ?? null
+}
+
+// Display / lookup name: the main worktree is "root"; others use their path
+// relative to the worktrees dir (so `feat/x` and `fix/x` stay distinct), or
+// their dir name when they live outside it.
 export function worktreeName(w: Worktree): string {
-  return w.isMain ? 'root' : basename(w.path)
+  if (w.isMain) return 'root'
+  const marker = `/${WORKTREE_DIR}/`
+  const at = w.path.lastIndexOf(marker)
+  return at === -1 ? basename(w.path) : w.path.slice(at + marker.length)
 }
 
 // Absolute path of the worktree the cwd is in (its top level), or null.
@@ -202,9 +220,37 @@ export async function trashWorktree(
   return true
 }
 
-// True if deleting `branch` would lose no commits: its tip commit is contained
-// in the history of some *other* ref — another local branch or any
-// remote-tracking ref. (Covers both "merged into main" and "pushed".)
+// True if `branch`'s cumulative changes already exist on `ref` — i.e. the
+// branch was squash-merged. Squash merges leave no reachable tip, so ancestry
+// checks miss them; instead, synthesize a single commit holding the branch's
+// whole diff since the merge-base (the commit-tree trick) and ask `git cherry`
+// whether a patch-equivalent commit is already upstream.
+export async function isSquashMergedInto(
+  branch: string,
+  ref: string,
+): Promise<boolean> {
+  const base = await run(['git', 'merge-base', ref, branch])
+  if (base.code !== 0) return false
+  const tree = await run(['git', 'rev-parse', `${branch}^{tree}`])
+  if (tree.code !== 0) return false
+  const squashed = await run([
+    'git',
+    'commit-tree',
+    tree.stdout,
+    '-p',
+    base.stdout,
+    '-m',
+    'wt squash-merge check',
+  ])
+  if (squashed.code !== 0) return false
+  const cherry = await run(['git', 'cherry', ref, squashed.stdout])
+  return cherry.code === 0 && cherry.stdout.startsWith('-')
+}
+
+// True if deleting `branch` would lose no work: its tip commit is contained in
+// the history of some *other* ref — another local branch or any
+// remote-tracking ref (covers both "merged into main" and "pushed") — or its
+// changes were squash-merged into the trunk.
 export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
   const {code, stdout} = await run([
     'git',
@@ -216,10 +262,15 @@ export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
     'refs/remotes',
   ])
   if (code !== 0) return false
-  return stdout
+  const contained = stdout
     .split('\n')
     .filter(Boolean)
     .some((ref) => ref !== `refs/heads/${branch}`)
+  if (contained) return true
+
+  const trunk = await trunkBranch()
+  if (!trunk || trunk === branch) return false
+  return isSquashMergedInto(branch, trunk)
 }
 
 export function deleteBranch(branch: string): Promise<RunResult> {
@@ -240,14 +291,16 @@ export function spawnDetachedRm(path: string): void {
 // Names of the linked (non-main) worktrees, for shell completion.
 export async function worktreeNames(): Promise<string[]> {
   const worktrees = await listWorktrees()
-  return worktrees.filter((w) => !w.isMain).map((w) => basename(w.path))
+  return worktrees.filter((w) => !w.isMain).map(worktreeName)
 }
 
 // Everything `wt cd` accepts: worktree names (incl. "root") + their branches.
+// A bare root is omitted — `wt root` still works, but it isn't suggested.
 export async function cdTargets(): Promise<string[]> {
   const worktrees = await listWorktrees()
   const targets = new Set<string>()
   for (const w of worktrees) {
+    if (w.isBare) continue
     targets.add(worktreeName(w))
     if (w.branch) targets.add(w.branch)
   }

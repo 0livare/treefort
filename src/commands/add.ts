@@ -9,7 +9,9 @@ import {
   currentBranch,
   currentWorktree,
   detach,
-  mainRoot,
+  isDirty,
+  mainWorktree,
+  trunkBranch,
   WORKTREE_DIR,
   worktreeForBranch,
 } from '../git'
@@ -21,11 +23,12 @@ export async function add(
   startPoint: string | undefined,
   opts: {force?: boolean},
 ) {
-  const root = await mainRoot()
-  if (!root) {
+  const rootWorktree = await mainWorktree()
+  if (!rootWorktree) {
     printError('not a git repository')
     process.exit(1)
   }
+  const root = rootWorktree.path
 
   let branch = name
   let create: boolean
@@ -47,6 +50,13 @@ export async function add(
     create = false
   } else {
     create = !(await branchExists(branch))
+    // An existing branch is checked out as-is; a start-point can't be honored.
+    if (!create && startPoint) {
+      printError(
+        `branch "${branch}" already exists — a start-point only applies when creating a new branch`,
+      )
+      process.exit(1)
+    }
   }
 
   // Never carve off a worktree for the trunk branch — that's the main worktree's job.
@@ -59,6 +69,24 @@ export async function add(
     process.exit(1)
   }
 
+  // Base for a new branch: '.' opts in to the current worktree's HEAD (git has
+  // no native syntax for this); with no start-point, always fork off wherever
+  // the root worktree is — never whichever worktree the shell happens to be in.
+  // A bare root has no checkout to fork from, so use the trunk branch.
+  let base = startPoint
+  if (base === '.') base = 'HEAD'
+  else if (!base && create) {
+    base = rootWorktree.isBare
+      ? ((await trunkBranch()) ?? '')
+      : (rootWorktree.branch ?? rootWorktree.head)
+    if (!base) {
+      printError(
+        'could not determine a start-point — pass one: wt add <name> <start-point>',
+      )
+      process.exit(1)
+    }
+  }
+
   const path = join(root, WORKTREE_DIR, branch)
 
   // If the branch is already checked out in the MAIN worktree, free it there
@@ -66,9 +94,19 @@ export async function add(
   // left alone — git will refuse and we surface that error.
   if (!create) {
     const holder = await worktreeForBranch(branch)
-    if (holder?.isMain && !(await freeRootWorktree(holder.path))) {
-      printError(`could not free ${branch} from ${holder.path}`)
-      process.exit(1)
+    if (holder?.isMain) {
+      // Freeing means switching the root's branch — don't drag uncommitted
+      // changes along without an explicit opt-in.
+      if (!opts.force && (await isDirty(holder.path))) {
+        printError(
+          `the root worktree has uncommitted changes on ${branch} — commit or stash them, or use --force`,
+        )
+        process.exit(1)
+      }
+      if (!(await freeRootWorktree(holder.path))) {
+        printError(`could not free ${branch} from ${holder.path}`)
+        process.exit(1)
+      }
     }
   }
 
@@ -78,7 +116,7 @@ export async function add(
     path,
     branch,
     create,
-    startPoint,
+    startPoint: base,
     force: opts.force,
   })
   if (res.code !== 0) {
@@ -93,7 +131,8 @@ export async function add(
   )
 
   // Bring over env files git won't (gitignored .env*), from the main worktree.
-  await copyEnvFiles(root, path)
+  // A bare root has no working files to copy.
+  if (!rootWorktree.isBare) await copyEnvFiles(root, path)
 
   // Remember where we were so `wt cd -` can bring us back.
   const from = await currentWorktree()
