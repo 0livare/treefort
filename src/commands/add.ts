@@ -9,6 +9,7 @@ import {
   currentBranch,
   currentWorktree,
   detach,
+  isDirty,
   mainWorktree,
   WORKTREE_DIR,
   worktreeForBranch,
@@ -81,9 +82,19 @@ export async function add(
   // left alone — git will refuse and we surface that error.
   if (!create) {
     const holder = await worktreeForBranch(branch)
-    if (holder?.isMain && !(await freeRootWorktree(holder.path))) {
-      printError(`could not free ${branch} from ${holder.path}`)
-      process.exit(1)
+    if (holder?.isMain) {
+      // Freeing means switching the root's branch — don't drag uncommitted
+      // changes along without an explicit opt-in.
+      if (!opts.force && (await isDirty(holder.path))) {
+        printError(
+          `the root worktree has uncommitted changes on ${branch} — commit or stash them, or use --force`,
+        )
+        process.exit(1)
+      }
+      if (!(await freeRootWorktree(holder.path))) {
+        printError(`could not free ${branch} from ${holder.path}`)
+        process.exit(1)
+      }
     }
   }
 
