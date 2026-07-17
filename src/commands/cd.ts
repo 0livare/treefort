@@ -4,7 +4,7 @@ import {listWorktrees, type Worktree, worktreeName} from '../git'
 import {printError} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
-import {confirm} from '../select'
+import {confirm, isInteractive} from '../select'
 import {pickWorktree} from '../worktree-picker'
 import {add} from './add'
 
@@ -117,6 +117,11 @@ export async function resolveWorktree({
 // hand off to add() (which creates the branch/worktree and prints the cd path);
 // on no, we return null so cd stays put. Either way cd has nothing left to do.
 async function offerToCreate(target: string): Promise<null> {
+  // Without a terminal there's nobody to ask — fail like a plain no-match.
+  if (!isInteractive()) {
+    printError(`no worktree matching "${target}"`)
+    process.exit(1)
+  }
   if (await confirm(`no worktree matching "${target}" — create it?`, true)) {
     await add(target, undefined, {})
   }
