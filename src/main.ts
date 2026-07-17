@@ -94,4 +94,9 @@ async function main() {
   }
 }
 
-await main()
+try {
+  await main()
+} catch (e) {
+  printError(e instanceof Error ? e.message : String(e))
+  process.exit(1)
+}
