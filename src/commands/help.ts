@@ -42,7 +42,7 @@ export function help() {
     `  ${wt} ${c('install')}                     Set up the shell wrapper + git excludes`,
   )
   say(
-    `  ${wt} ${c('shell-init')}                  Print the zsh wrapper function`,
+    `  ${wt} ${c('shell-init')} ${c('[shell]')}          Print the shell wrapper (zsh or bash)`,
   )
 
   say()

@@ -1,9 +1,16 @@
 import {homedir} from 'node:os'
-import {join} from 'node:path'
+import {basename, join} from 'node:path'
 import {globalExcludesFile, setGlobalExcludesFile, WORKTREE_DIR} from '../git'
-import {printInfo, printSuccess, say} from '../helpers'
+import {printInfo, printSuccess, printWarning, say} from '../helpers'
 
-const EVAL_LINE = 'eval "$(command wt shell-init)"'
+// The shell name is baked into the line so the emitted wrapper/completion
+// always matches the file it lives in, whatever $SHELL says later.
+const evalLine = (shell: string) => `eval "$(command wt shell-init ${shell})"`
+
+const RC_FILES: Record<string, string> = {
+  zsh: '.zshrc',
+  bash: '.bashrc',
+}
 
 export async function install() {
   say()
@@ -13,20 +20,32 @@ export async function install() {
 }
 
 async function installShell() {
-  const zshrc = join(homedir(), '.zshrc')
-  const file = Bun.file(zshrc)
+  const shell = basename(process.env.SHELL ?? '')
+  const rcName = RC_FILES[shell]
+  if (!rcName) {
+    printWarning(
+      `no automatic setup for your shell (${shell || 'unknown'}) — zsh and bash are supported`,
+    )
+    printInfo(`add the equivalent of this to your shell config manually:`)
+    printInfo(`  ${evalLine('zsh')}`)
+    return
+  }
+
+  const rc = join(homedir(), rcName)
+  const file = Bun.file(rc)
   const existing = (await file.exists()) ? await file.text() : ''
 
-  if (existing.includes(EVAL_LINE)) {
-    printInfo('~/.zshrc already sources the wt shell function')
+  // Matches both the current line and the older argument-less form.
+  if (existing.includes('command wt shell-init')) {
+    printInfo(`~/${rcName} already sources the wt shell function`)
     return
   }
 
   const sep = existing === '' || existing.endsWith('\n') ? '' : '\n'
-  const block = `${sep}\n# treefort (wt) shell wrapper (cd-on-add support)\n${EVAL_LINE}\n`
-  await Bun.write(zshrc, existing + block)
-  printSuccess('added the wt shell function to ~/.zshrc')
-  printInfo('run `source ~/.zshrc` or open a new shell to activate it')
+  const block = `${sep}\n# treefort (wt) shell wrapper (cd-on-add support)\n${evalLine(shell)}\n`
+  await Bun.write(rc, existing + block)
+  printSuccess(`added the wt shell function to ~/${rcName}`)
+  printInfo(`run \`source ~/${rcName}\` or open a new shell to activate it`)
 }
 
 async function installGitExcludes() {

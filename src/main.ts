@@ -81,7 +81,7 @@ async function main() {
       await install()
       break
     case 'shell-init':
-      shellInit()
+      shellInit(rest[0])
       break
     case '__complete':
       await complete(rest[0])
