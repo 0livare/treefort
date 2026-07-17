@@ -94,6 +94,52 @@ test('slash-named worktrees keep distinct names', async () => {
   expect((await wt(repo, '__complete', 'worktrees')).stdout).toBe('fix/x')
 })
 
+test('add tracks a branch that exists only on a remote', async () => {
+  const src = await makeRepo()
+  await git(src, 'checkout', '-q', '-b', 'remote-only')
+  writeFileSync(join(src, 'remote.txt'), 'r\n')
+  await git(src, 'add', '.')
+  await git(src, 'commit', '-q', '-m', 'remote work')
+  await git(src, 'checkout', '-q', 'main')
+
+  const repo = join(scratch, 'clone-track')
+  await git(scratch, 'clone', '-q', src, repo)
+
+  const res = await wt(repo, 'add', 'remote-only')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('tracking origin/remote-only')
+  expect(await tip(repo, 'remote-only')).toBe(
+    await tip(repo, 'origin/remote-only'),
+  )
+  expect(await tip(repo, 'remote-only')).not.toBe(await tip(repo, 'main'))
+  const upstream = await git(
+    repo,
+    'rev-parse',
+    '--abbrev-ref',
+    'remote-only@{upstream}',
+  )
+  expect(upstream.stdout).toBe('origin/remote-only')
+})
+
+test('add errors when a branch exists on multiple remotes', async () => {
+  const src = await makeRepo()
+  await git(src, 'branch', 'shared')
+
+  const repo = join(scratch, 'clone-multi')
+  await git(scratch, 'clone', '-q', src, repo)
+  await git(repo, 'remote', 'add', 'upstream', src)
+  await git(repo, 'fetch', '-q', 'upstream')
+
+  const res = await wt(repo, 'add', 'shared')
+  expect(res.code).toBe(1)
+  expect(res.stderr).toContain('multiple remotes')
+
+  // An explicit start-point disambiguates.
+  const explicit = await wt(repo, 'add', 'shared', 'origin/shared')
+  expect(explicit.code).toBe(0)
+  expect(await tip(repo, 'shared')).toBe(await tip(repo, 'origin/shared'))
+})
+
 test('add rejects a start-point for an existing branch', async () => {
   const repo = await makeRepo()
   await git(repo, 'branch', 'existing')

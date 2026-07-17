@@ -90,11 +90,11 @@ Want to create a worktree around an existing branch? No problem. Run `wt add` wi
 
 ```sh
 wt exec git pull --ff-only     # no target -> runs in the main (root) worktree
-wt exec feature-x -- bun test  # target before -- ; command after
+wt exec feature-x -- bun test  # wk exec <other worktree> -- <command to run in other worktree> 
 wt exec @ -- git fetch         # @ and root both mean the main worktree
 ```
 
-With no target the command runs in the root worktree, so `wt exec <command>` just works. To aim at another worktree, put its name (or `@`/`root`/`-`, resolved exactly like `wt cd`) before a `--` separator; everything after `--` is the command, flags and all.
+With no target the command runs in the root worktree, so `wt exec <command>` just works. To aim at another worktree, put its name (or `@`/`root`/`-`, resolved exactly like `wt cd`) before a `--` separator. Everything after `--` is the command, flags and all.
 
 ---
 
@@ -132,6 +132,8 @@ wt
 
 # Add a worktree and automatically cd into it.
 #   - if the branch exists, it's checked out
+#   - if it only exists on a remote, a local tracking branch is created
+#     (a branch on multiple remotes errors and asks you to pick one)
 #   - otherwise a new branch is created off the root worktree
 #     (even when you run this from inside another worktree)
 wt add feature-x

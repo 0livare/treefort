@@ -119,6 +119,24 @@ export async function branchExists(branch: string): Promise<boolean> {
   return code === 0
 }
 
+// Remotes that have a branch named `branch` (e.g. ['origin', 'upstream']).
+export async function remotesWithBranch(branch: string): Promise<string[]> {
+  const {code, stdout} = await run(['git', 'remote'])
+  if (code !== 0 || !stdout) return []
+  const found: string[] = []
+  for (const remote of stdout.split('\n').filter(Boolean)) {
+    const ref = await run([
+      'git',
+      'show-ref',
+      '--verify',
+      '--quiet',
+      `refs/remotes/${remote}/${branch}`,
+    ])
+    if (ref.code === 0) found.push(remote)
+  }
+  return found
+}
+
 // The repo's trunk branch: 'main' if it exists, else 'master', else null.
 export async function trunkBranch(): Promise<string | null> {
   for (const name of ['main', 'master']) {
@@ -180,6 +198,7 @@ export type AddOptions = {
   branch: string
   create: boolean // -b a new branch vs check out an existing one
   startPoint?: string
+  track?: boolean // set the new branch's upstream to startPoint
   force?: boolean
 }
 
@@ -187,6 +206,7 @@ export function addWorktree(opts: AddOptions): Promise<RunResult> {
   const args = ['git', 'worktree', 'add']
   if (opts.force) args.push('--force')
   if (opts.create) {
+    if (opts.track) args.push('--track')
     args.push('-b', opts.branch, opts.path)
     if (opts.startPoint) args.push(opts.startPoint)
   } else {

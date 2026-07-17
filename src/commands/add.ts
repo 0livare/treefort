@@ -11,6 +11,7 @@ import {
   detach,
   isDirty,
   mainWorktree,
+  remotesWithBranch,
   trunkBranch,
   WORKTREE_DIR,
   worktreeForBranch,
@@ -74,11 +75,26 @@ export async function add(
   // the root worktree is — never whichever worktree the shell happens to be in.
   // A bare root has no checkout to fork from, so use the trunk branch.
   let base = startPoint
+  let track = false
   if (base === '.') base = 'HEAD'
   else if (!base && create) {
-    base = rootWorktree.isBare
-      ? ((await trunkBranch()) ?? '')
-      : (rootWorktree.branch ?? rootWorktree.head)
+    // A branch that lives only on a remote should be picked up from there —
+    // not shadowed by a fresh same-named branch forked off the root.
+    const remotes = await remotesWithBranch(branch)
+    if (remotes.length > 1) {
+      printError(
+        `branch "${branch}" exists on multiple remotes (${remotes.join(', ')}) — pick one: wt add ${branch} ${remotes[0]}/${branch}`,
+      )
+      process.exit(1)
+    }
+    if (remotes.length === 1) {
+      base = `${remotes[0]}/${branch}`
+      track = true
+    } else {
+      base = rootWorktree.isBare
+        ? ((await trunkBranch()) ?? '')
+        : (rootWorktree.branch ?? rootWorktree.head)
+    }
     if (!base) {
       printError(
         'could not determine a start-point — pass one: wt add <name> <start-point>',
@@ -117,6 +133,7 @@ export async function add(
     branch,
     create,
     startPoint: base,
+    track,
     force: opts.force,
   })
   if (res.code !== 0) {
@@ -126,7 +143,9 @@ export async function add(
 
   printSuccess(
     create
-      ? `created ${branch} at ${WORKTREE_DIR}/${branch}`
+      ? track
+        ? `created ${branch} at ${WORKTREE_DIR}/${branch}, tracking ${base}`
+        : `created ${branch} at ${WORKTREE_DIR}/${branch}`
       : `added worktree for ${branch} at ${WORKTREE_DIR}/${branch}`,
   )
 
