@@ -36,7 +36,7 @@ export function help() {
     `  ${wt} ${c('root')}                        cd back to the root worktree`,
   )
   say(
-    `  ${wt} ${c('exec')} ${c('<name>')} ${c('--')} ${c('<cmd>')}       Run a command in a worktree`,
+    `  ${wt} ${c('exec')} ${c('[name --]')} ${c('<cmd>')}       Run a command in a worktree (root if no target)`,
   )
   say(
     `  ${wt} ${c('install')}                     Set up the shell wrapper + git excludes`,

@@ -1,16 +1,14 @@
-import {basename} from 'node:path'
 import {listWorktrees} from '../git'
 import {printError} from '../helpers'
+import {resolveWorktree} from './cd'
 
-// Run a command inside another worktree without switching to it.
-// `@` targets the main worktree; otherwise match by worktree name or branch.
+// Run a command inside a worktree without switching to it. With no target the
+// command runs in the main (root) worktree; otherwise the target is resolved
+// the same way `wt cd` resolves it (`@`/`root` = main, `-` = previous, else
+// exact-then-fuzzy name/branch match).
 export async function exec(target: string | undefined, command: string[]) {
-  if (!target) {
-    printError('usage: wt exec <name> -- <command>')
-    process.exit(1)
-  }
   if (command.length === 0) {
-    printError('provide a command: wt exec <name> -- <command>')
+    printError('provide a command: wt exec [target --] <command>')
     process.exit(1)
   }
 
@@ -20,19 +18,11 @@ export async function exec(target: string | undefined, command: string[]) {
     process.exit(1)
   }
 
-  const wt =
-    target === '@'
-      ? worktrees[0]
-      : worktrees.find(
-          (w) => basename(w.path) === target || w.branch === target,
-        )
-  if (!wt) {
-    printError(`no worktree named "${target}"`)
-    process.exit(1)
-  }
+  const root = worktrees[0].path
+  const cwd = target ? await resolveWorktree(target, worktrees, root) : root
 
   const proc = Bun.spawn(command, {
-    cwd: wt.path,
+    cwd,
     stdin: 'inherit',
     stdout: 'inherit',
     stderr: 'inherit',

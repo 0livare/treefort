@@ -13,8 +13,27 @@ import {
   shellInit,
   version,
 } from './commands'
+import {printError} from './helpers'
 
 async function main() {
+  // `exec` forwards an arbitrary command that may contain its own flags, so
+  // parse it straight from argv rather than through parseArgs. A `--` separates
+  // an optional target from the command; with no `--` the whole tail is the
+  // command and it runs in the main (root) worktree.
+  const raw = process.argv.slice(2)
+  if (raw[0] === 'exec') {
+    const args = raw.slice(1)
+    const sep = args.indexOf('--')
+    const before = sep === -1 ? [] : args.slice(0, sep)
+    const command = sep === -1 ? args : args.slice(sep + 1)
+    if (before.length > 1) {
+      printError('usage: wt exec [target --] <command>')
+      process.exit(1)
+    }
+    await exec(before[0], command)
+    return
+  }
+
   const cli = parseCliArgs()
 
   if (cli.values.help) {
@@ -51,9 +70,6 @@ async function main() {
     case 'cd':
       // Explicit `wt cd [target]`; no target opens the picker.
       await cd(rest[0])
-      break
-    case 'exec':
-      await exec(rest[0], rest.slice(1))
       break
     case 'install':
       await install()

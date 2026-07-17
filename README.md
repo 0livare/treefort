@@ -83,9 +83,12 @@ Want to create a worktree around an existing branch? No problem. Run `wt add` wi
 ### 🔭 Reach into a worktree without leaving yours
 
 ```sh
-wt exec feature-x -- bun test
-wt exec @ -- git pull          # @ = the main worktree
+wt exec git pull --ff-only     # no target -> runs in the main (root) worktree
+wt exec feature-x -- bun test  # target before -- ; command after
+wt exec @ -- git fetch         # @ and root both mean the main worktree
 ```
+
+With no target the command runs in the root worktree, so `wt exec <command>` just works. To aim at another worktree, put its name (or `@`/`root`/`-`, resolved exactly like `wt cd`) before a `--` separator; everything after `--` is the command, flags and all.
 
 ---
 

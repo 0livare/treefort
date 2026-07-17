@@ -25,7 +25,7 @@ export async function cd(target?: string) {
   const dest =
     target === undefined
       ? await pick(worktrees, root)
-      : await resolve(target, worktrees, root)
+      : await resolveWorktree(target, worktrees, root)
   if (dest === null) return // picker cancelled — stay put
 
   // Remember where we were so `wt cd -` can toggle back, and bump frecency.
@@ -49,8 +49,9 @@ async function pick(
   return chosen?.path ?? null
 }
 
-// Resolve a target string to a worktree path, exiting with an error if none match.
-async function resolve(
+// Resolve a target string to a worktree path, exiting with an error if none
+// match. Shared with `wt exec` so both resolve targets identically.
+export async function resolveWorktree(
   target: string,
   worktrees: Worktree[],
   root: string,
