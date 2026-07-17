@@ -7,7 +7,10 @@ auto-`cd`). Worktrees live under `.worktrees/<name>` at the repo root.
 
 - **Bun + TypeScript**, no build step — the bin (`wt`) points straight at `src/main.ts`.
 - Only runtime dep is `chalk`. Args parsed with `node:util`'s `parseArgs`.
-- **Biome** for formatting + linting. No CLI framework, no tests.
+- **Biome** for formatting + linting. No CLI framework.
+- Tests run with `bun test`: unit tests (`src/match.test.ts`) plus an
+  integration suite (`src/integration.test.ts`) that drives the CLI as a
+  subprocess against throwaway repos.
 
 ## Layout
 
@@ -33,8 +36,9 @@ Keep this split intact: never print human-facing text to stdout.
 - Biome (`biome.json`): no semicolons, single quotes, 2-space indent, trailing
   commas, **no bracket spacing** (`{foo}` not `{ foo }`), 80-col width.
 - Use the `node:` prefix on all Node builtin imports (`node:path`, `node:util`, …).
-- Before finishing: `bun run pr` (runs `tsc` typecheck + `biome check --write .`).
-  Also `bun run format`, `bun run lint`, `bun run check` for individual steps.
+- Before finishing: `bun run pr` (runs `tsc` typecheck + `biome check --write .`
+  + `bun test`). Also `bun run format`, `bun run lint`, `bun run check`,
+  `bun run test` for individual steps.
 
 ## Commits — Conventional Commits
 
