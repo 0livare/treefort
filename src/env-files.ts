@@ -62,7 +62,7 @@ async function scan(
     try {
       await mkdir(dirname(dest), {recursive: true})
       await copyFile(full, dest)
-      printSuccess(`copied ${rel}`)
+      printSuccess(`copied ${rel} from the root worktree`)
     } catch (e) {
       printWarning(
         `could not copy ${rel}: ${e instanceof Error ? e.message : e}`,
