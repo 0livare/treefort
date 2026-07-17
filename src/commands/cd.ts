@@ -4,7 +4,9 @@ import {listWorktrees, type Worktree, worktreeName} from '../git'
 import {printError} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
+import {confirm} from '../select'
 import {pickWorktree} from '../worktree-picker'
+import {add} from './add'
 
 // The one worktree-navigation path. With a target, resolve it (`-` = previous,
 // `root`/`@` = main, else exact-then-fuzzy name/branch match); with no target,
@@ -25,8 +27,15 @@ export async function cd(target?: string) {
   const dest =
     target === undefined
       ? await pick(worktrees, root)
-      : await resolveWorktree(target, worktrees, root)
-  if (dest === null) return // picker cancelled — stay put
+      : await resolveWorktree({
+          target,
+          worktrees,
+          root,
+          // No match: offer to create a worktree with that name. add() handles
+          // its own stdout/bookkeeping, so return null to bow out here.
+          onNoMatch: () => offerToCreate(target),
+        })
+  if (dest === null) return // picker cancelled, or create handled/declined
 
   // Remember where we were so `wt cd -` can toggle back, and bump frecency.
   if (current && current !== dest) await setPrevious(root, current)
@@ -49,13 +58,29 @@ async function pick(
   return chosen?.path ?? null
 }
 
-// Resolve a target string to a worktree path, exiting with an error if none
-// match. Shared with `wt exec` so both resolve targets identically.
-export async function resolveWorktree(
-  target: string,
-  worktrees: Worktree[],
-  root: string,
-): Promise<string> {
+type ResolveOpts = {
+  target: string
+  worktrees: Worktree[]
+  root: string
+  // Called when nothing matches; its result becomes the resolved path. cd uses
+  // it to offer creating one. Omit it to error and exit instead (what exec wants).
+  onNoMatch?: () => Promise<string | null>
+}
+
+// Resolve a target string to a worktree path. Shared with `wt exec` so both
+// resolve targets identically.
+export function resolveWorktree(
+  opts: Omit<ResolveOpts, 'onNoMatch'>,
+): Promise<string>
+export function resolveWorktree(
+  opts: ResolveOpts & {onNoMatch: () => Promise<string | null>},
+): Promise<string | null>
+export async function resolveWorktree({
+  target,
+  worktrees,
+  root,
+  onNoMatch,
+}: ResolveOpts): Promise<string | null> {
   if (target === '-') {
     const prev = await getPrevious(root)
     if (!prev || !existsSync(prev)) {
@@ -79,10 +104,21 @@ export async function resolveWorktree(
       (w.branch != null && matchesQuery(target, w.branch)),
   )
   if (matches.length === 0) {
-    printError(`no worktree named "${target}"`)
+    if (onNoMatch) return onNoMatch()
+    printError(`no worktree matching "${target}"`)
     process.exit(1)
   }
   return matches.length === 1
     ? matches[0].path
     : (await rank(root, matches))[0].path
+}
+
+// No worktree matched the target: ask whether to create one for it. On yes,
+// hand off to add() (which creates the branch/worktree and prints the cd path);
+// on no, we return null so cd stays put. Either way cd has nothing left to do.
+async function offerToCreate(target: string): Promise<null> {
+  if (await confirm(`no worktree matching "${target}" — create it?`, true)) {
+    await add(target, undefined, {})
+  }
+  return null
 }
