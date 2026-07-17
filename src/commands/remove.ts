@@ -1,3 +1,4 @@
+import {rank} from '../frecency'
 import {
   branchIsSafeToDelete,
   deleteBranch,
@@ -8,6 +9,8 @@ import {
   worktreeStatus,
 } from '../git'
 import {printError, printInfo, printSuccess, printWarning} from '../helpers'
+import {matchesQuery} from '../match'
+import {confirm, isInteractive} from '../select'
 import {pickWorktree} from '../worktree-picker'
 
 export async function remove(
@@ -29,14 +32,7 @@ export async function remove(
 
   let target: Worktree
   if (name) {
-    const found = removable.find(
-      (w) => worktreeName(w) === name || w.branch === name,
-    )
-    if (!found) {
-      printError(`no worktree named "${name}"`)
-      process.exit(1)
-    }
-    target = found
+    target = await resolveRemovable(name, removable, root)
   } else {
     // Default the cursor to the worktree you're in, so Enter removes it.
     const currentIndex = removable.findIndex((w) => w.isCurrent)
@@ -107,4 +103,39 @@ export async function remove(
 
   // If we removed the worktree we were in, cd the wrapper back to the root.
   if (isCurrent) process.stdout.write(`${root}\n`)
+}
+
+// Resolve a target the same way cd does — exact name/branch first, then fuzzy
+// ranked by frecency — but because rm is destructive, a fuzzy hit needs a y/N
+// confirmation (and without a terminal, an exact name is required).
+async function resolveRemovable(
+  name: string,
+  removable: Worktree[],
+  root: string,
+): Promise<Worktree> {
+  const exact = removable.find(
+    (w) => worktreeName(w) === name || w.branch === name,
+  )
+  if (exact) return exact
+
+  const matches = removable.filter(
+    (w) =>
+      matchesQuery(name, worktreeName(w)) ||
+      (w.branch != null && matchesQuery(name, w.branch)),
+  )
+  if (matches.length === 0) {
+    printError(`no worktree matching "${name}"`)
+    process.exit(1)
+  }
+  const best =
+    matches.length === 1 ? matches[0] : (await rank(root, matches))[0]
+
+  if (!isInteractive()) {
+    printError(
+      `no worktree named "${name}" — closest match is ${worktreeName(best)}; pass the exact name`,
+    )
+    process.exit(1)
+  }
+  if (!(await confirm(`remove ${worktreeName(best)}?`))) process.exit(0)
+  return best
 }
