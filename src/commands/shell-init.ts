@@ -13,7 +13,8 @@ const shellScript = `wt() {
   esac
   local dir
   dir=$(command wt "$@") || return
-  [ -n "$dir" ] && cd "$dir"
+  [ -n "$dir" ] || return 0
+  cd "$dir"
 }
 
 _wt() {
