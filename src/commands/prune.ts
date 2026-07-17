@@ -1,17 +1,19 @@
 import {
   branchesMergedInto,
   deleteBranch,
+  isSquashMergedInto,
   listWorktrees,
   trashWorktree,
   trunkBranch,
+  type Worktree,
   worktreeName,
   worktreeStatus,
 } from '../git'
 import {printError, printInfo, printSuccess, printWarning} from '../helpers'
 
 // Remove every linked worktree whose branch is already merged into the trunk
-// (main/master), deleting the merged branch too. Dirty worktrees are skipped
-// unless --force.
+// (main/master) — including squash merges — deleting the merged branch too.
+// Dirty worktrees are skipped unless --force.
 export async function prune(opts: {force?: boolean}) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
@@ -29,9 +31,13 @@ export async function prune(opts: {force?: boolean}) {
   const merged = new Set(await branchesMergedInto(trunk))
   merged.delete(trunk)
 
-  const candidates = worktrees.filter(
-    (w) => !w.isMain && w.branch != null && merged.has(w.branch),
-  )
+  const candidates: Worktree[] = []
+  for (const w of worktrees) {
+    if (w.isMain || w.branch == null || w.branch === trunk) continue
+    if (merged.has(w.branch) || (await isSquashMergedInto(w.branch, trunk))) {
+      candidates.push(w)
+    }
+  }
   if (candidates.length === 0) {
     printInfo(`no worktrees with branches merged into ${trunk}`)
     return

@@ -211,9 +211,37 @@ export async function trashWorktree(
   return true
 }
 
-// True if deleting `branch` would lose no commits: its tip commit is contained
-// in the history of some *other* ref — another local branch or any
-// remote-tracking ref. (Covers both "merged into main" and "pushed".)
+// True if `branch`'s cumulative changes already exist on `ref` — i.e. the
+// branch was squash-merged. Squash merges leave no reachable tip, so ancestry
+// checks miss them; instead, synthesize a single commit holding the branch's
+// whole diff since the merge-base (the commit-tree trick) and ask `git cherry`
+// whether a patch-equivalent commit is already upstream.
+export async function isSquashMergedInto(
+  branch: string,
+  ref: string,
+): Promise<boolean> {
+  const base = await run(['git', 'merge-base', ref, branch])
+  if (base.code !== 0) return false
+  const tree = await run(['git', 'rev-parse', `${branch}^{tree}`])
+  if (tree.code !== 0) return false
+  const squashed = await run([
+    'git',
+    'commit-tree',
+    tree.stdout,
+    '-p',
+    base.stdout,
+    '-m',
+    'wt squash-merge check',
+  ])
+  if (squashed.code !== 0) return false
+  const cherry = await run(['git', 'cherry', ref, squashed.stdout])
+  return cherry.code === 0 && cherry.stdout.startsWith('-')
+}
+
+// True if deleting `branch` would lose no work: its tip commit is contained in
+// the history of some *other* ref — another local branch or any
+// remote-tracking ref (covers both "merged into main" and "pushed") — or its
+// changes were squash-merged into the trunk.
 export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
   const {code, stdout} = await run([
     'git',
@@ -225,10 +253,15 @@ export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
     'refs/remotes',
   ])
   if (code !== 0) return false
-  return stdout
+  const contained = stdout
     .split('\n')
     .filter(Boolean)
     .some((ref) => ref !== `refs/heads/${branch}`)
+  if (contained) return true
+
+  const trunk = await trunkBranch()
+  if (!trunk || trunk === branch) return false
+  return isSquashMergedInto(branch, trunk)
 }
 
 export function deleteBranch(branch: string): Promise<RunResult> {
