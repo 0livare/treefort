@@ -1,5 +1,6 @@
 import {mkdir} from 'node:fs/promises'
 import {dirname, join} from 'node:path'
+import {copyEnvFiles} from '../env-files'
 import {recordAccess} from '../frecency'
 import {
   addWorktree,
@@ -90,6 +91,10 @@ export async function add(
       ? `created ${branch} at ${WORKTREE_DIR}/${branch}`
       : `added worktree for ${branch} at ${WORKTREE_DIR}/${branch}`,
   )
+
+  // Bring over env files git won't (gitignored .env*), from the main worktree.
+  await copyEnvFiles(root, path)
+
   // Remember where we were so `wt cd -` can bring us back.
   const from = await currentWorktree()
   if (from && from !== path) await setPrevious(root, from)

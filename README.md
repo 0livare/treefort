@@ -52,6 +52,10 @@ wt      # pick a worktree from a list, then automatically cd into it
 
 Everything lands under a hidden `.worktrees/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.worktrees/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories.
 
+### 🌿 Your env files come along for free
+
+A fresh worktree only gets what git tracks, so your gitignored `.env` files stay behind and nothing runs. `wt add` fixes that: it scans the main worktree (the root plus three levels down, skipping dotdirs and `node_modules`) and copies every `.env*` file — `.env`, `.env.local`, `.env.<mode>`, and friends — into the new worktree at the same relative path. Anything git already checked out is left untouched. No config, no flags, just a worktree that works on the first `cd`.
+
 ### ⚡️ Removal returns *immediately*
 
 `wt rm` deregisters the worktree and moves it out of the way _instantly_, then deletes the files in the background. Your prompt comes back ***now*** — not in 30s after `rm -rf` finishes churning through `node_modules`.
