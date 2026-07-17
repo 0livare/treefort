@@ -48,6 +48,13 @@ export async function add(
     create = false
   } else {
     create = !(await branchExists(branch))
+    // An existing branch is checked out as-is; a start-point can't be honored.
+    if (!create && startPoint) {
+      printError(
+        `branch "${branch}" already exists — a start-point only applies when creating a new branch`,
+      )
+      process.exit(1)
+    }
   }
 
   // Never carve off a worktree for the trunk branch — that's the main worktree's job.
