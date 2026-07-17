@@ -1,10 +1,10 @@
-import {basename} from 'node:path'
 import {
   branchIsSafeToDelete,
   deleteBranch,
   listWorktrees,
   trashWorktree,
   type Worktree,
+  worktreeName,
   worktreeStatus,
 } from '../git'
 import {printError, printInfo, printSuccess, printWarning} from '../helpers'
@@ -30,7 +30,7 @@ export async function remove(
   let target: Worktree
   if (name) {
     const found = removable.find(
-      (w) => basename(w.path) === name || w.branch === name,
+      (w) => worktreeName(w) === name || w.branch === name,
     )
     if (!found) {
       printError(`no worktree named "${name}"`)
@@ -54,7 +54,7 @@ export async function remove(
     const status = await worktreeStatus(target.path)
     if (status) {
       printError(
-        `${basename(target.path)} has uncommitted changes — use --force to remove anyway`,
+        `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
       )
       for (const line of status.split('\n')) printInfo(line)
       process.exit(1)
@@ -78,11 +78,11 @@ export async function remove(
   process.chdir(root)
 
   if (!(await trashWorktree(root, target.path))) {
-    printError(`could not remove ${basename(target.path)}`)
+    printError(`could not remove ${worktreeName(target)}`)
     process.exit(1)
   }
 
-  printSuccess(`removed ${basename(target.path)} (deleting in background)`)
+  printSuccess(`removed ${worktreeName(target)} (deleting in background)`)
 
   // Delete the branch unless asked to keep it. In 'safe' mode we only delete
   // when the commits survive elsewhere; --force-branch deletes regardless.

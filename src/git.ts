@@ -71,9 +71,14 @@ export async function mainRoot(): Promise<string | null> {
   return (await mainWorktree())?.path ?? null
 }
 
-// Display / lookup name: the main worktree is "root", others use their dir name.
+// Display / lookup name: the main worktree is "root"; others use their path
+// relative to the worktrees dir (so `feat/x` and `fix/x` stay distinct), or
+// their dir name when they live outside it.
 export function worktreeName(w: Worktree): string {
-  return w.isMain ? 'root' : basename(w.path)
+  if (w.isMain) return 'root'
+  const marker = `/${WORKTREE_DIR}/`
+  const at = w.path.lastIndexOf(marker)
+  return at === -1 ? basename(w.path) : w.path.slice(at + marker.length)
 }
 
 // Absolute path of the worktree the cwd is in (its top level), or null.
@@ -244,7 +249,7 @@ export function spawnDetachedRm(path: string): void {
 // Names of the linked (non-main) worktrees, for shell completion.
 export async function worktreeNames(): Promise<string[]> {
   const worktrees = await listWorktrees()
-  return worktrees.filter((w) => !w.isMain).map((w) => basename(w.path))
+  return worktrees.filter((w) => !w.isMain).map(worktreeName)
 }
 
 // Everything `wt cd` accepts: worktree names (incl. "root") + their branches.
