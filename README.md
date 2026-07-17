@@ -1,6 +1,6 @@
 # Treefort - git worktrees without the work 🌳
 
-<img width="566" height="248" alt="CleanShot 2026-07-17 at 15 32 08" src="https://github.com/user-attachments/assets/51986992-661c-47c5-9026-2483a883e700" />
+<img width="562" height="246" alt="treefort live demo" src="https://github.com/user-attachments/assets/c3b50877-97e8-44fc-8b9e-720dd623b145" />
 <br/><br/>
 
 Git worktrees let you check out multiple branches at once, each in its own directory. AI has skyrocketed the use of worktrees so that multiple agents can work simultaneously without stepping on each other's toes.
