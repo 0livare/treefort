@@ -1,3 +1,4 @@
+import {existsSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {basename, join} from 'node:path'
 import {globalExcludesFile, setGlobalExcludesFile, WORKTREE_DIR} from '../git'
@@ -51,9 +52,18 @@ async function installShell() {
 async function installGitExcludes() {
   let excludes = await globalExcludesFile()
   if (!excludes) {
-    excludes = join(homedir(), '.gitignore_global')
-    await setGlobalExcludesFile(excludes)
-    printSuccess(`set git core.excludesfile to ${excludes}`)
+    // core.excludesfile is unset, but git still consults ~/.config/git/ignore
+    // by default — if that file exists, append there rather than shadowing it
+    // with a new file. Only when neither exists, create ~/.gitignore_global.
+    const xdgConfig = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
+    const xdgIgnore = join(xdgConfig, 'git', 'ignore')
+    if (existsSync(xdgIgnore)) {
+      excludes = xdgIgnore
+    } else {
+      excludes = join(homedir(), '.gitignore_global')
+      await setGlobalExcludesFile(excludes)
+      printSuccess(`set git core.excludesfile to ${excludes}`)
+    }
   }
 
   const resolved = excludes.replace(/^~(?=$|\/)/, homedir())
