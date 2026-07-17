@@ -3,7 +3,7 @@ import {type Worktree, worktreeName} from './git'
 import {select} from './select'
 
 const branchLabel = (w: Worktree) =>
-  w.branch ?? `detached @ ${w.head.slice(0, 7)}`
+  w.branch ?? (w.isBare ? '(bare)' : `detached @ ${w.head.slice(0, 7)}`)
 
 // Shared interactive worktree picker: NAME/BRANCH column headers, aligned
 // columns, "root" for the main worktree. Used by every worktree prompt so they

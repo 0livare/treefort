@@ -11,6 +11,7 @@ import {
   detach,
   isDirty,
   mainWorktree,
+  trunkBranch,
   WORKTREE_DIR,
   worktreeForBranch,
 } from '../git'
@@ -71,9 +72,20 @@ export async function add(
   // Base for a new branch: '.' opts in to the current worktree's HEAD (git has
   // no native syntax for this); with no start-point, always fork off wherever
   // the root worktree is — never whichever worktree the shell happens to be in.
+  // A bare root has no checkout to fork from, so use the trunk branch.
   let base = startPoint
   if (base === '.') base = 'HEAD'
-  else if (!base && create) base = rootWorktree.branch ?? rootWorktree.head
+  else if (!base && create) {
+    base = rootWorktree.isBare
+      ? ((await trunkBranch()) ?? '')
+      : (rootWorktree.branch ?? rootWorktree.head)
+    if (!base) {
+      printError(
+        'could not determine a start-point — pass one: wt add <name> <start-point>',
+      )
+      process.exit(1)
+    }
+  }
 
   const path = join(root, WORKTREE_DIR, branch)
 
@@ -119,7 +131,8 @@ export async function add(
   )
 
   // Bring over env files git won't (gitignored .env*), from the main worktree.
-  await copyEnvFiles(root, path)
+  // A bare root has no working files to copy.
+  if (!rootWorktree.isBare) await copyEnvFiles(root, path)
 
   // Remember where we were so `wt cd -` can bring us back.
   const from = await currentWorktree()

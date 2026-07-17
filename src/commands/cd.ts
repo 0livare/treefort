@@ -44,12 +44,16 @@ export async function cd(target?: string) {
 }
 
 // Interactive picker, ordered by frecency with the cursor on the top entry that
-// isn't the current worktree. Returns the chosen path, or null if cancelled.
+// isn't the current worktree. A bare root isn't offered (nothing to work in
+// there). Returns the chosen path, or null if cancelled.
 async function pick(
   worktrees: Worktree[],
   root: string,
 ): Promise<string | null> {
-  const ordered = await rank(root, worktrees)
+  const ordered = await rank(
+    root,
+    worktrees.filter((w) => !w.isBare),
+  )
   const firstOther = ordered.findIndex((w) => !w.isCurrent)
   const chosen = await pickWorktree(ordered, {
     title: 'Switch to worktree',
@@ -100,8 +104,9 @@ export async function resolveWorktree({
 
   const matches = worktrees.filter(
     (w) =>
-      matchesQuery(target, worktreeName(w)) ||
-      (w.branch != null && matchesQuery(target, w.branch)),
+      !w.isBare &&
+      (matchesQuery(target, worktreeName(w)) ||
+        (w.branch != null && matchesQuery(target, w.branch))),
   )
   if (matches.length === 0) {
     if (onNoMatch) return onNoMatch()

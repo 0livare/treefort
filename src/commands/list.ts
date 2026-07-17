@@ -21,7 +21,7 @@ export async function list() {
     const nameStyled = w.isCurrent ? chalk.bold(name) : name
     const branch = w.branch
       ? chalk.dim(w.branch)
-      : chalk.dim(`detached @ ${w.head.slice(0, 7)}`)
+      : chalk.dim(w.isBare ? '(bare)' : `detached @ ${w.head.slice(0, 7)}`)
     const dirtyMark = dirty[i] ? `   ${chalk.yellow('● dirty')}` : ''
     say(`  ${marker} ${nameStyled}   ${branch}${dirtyMark}`)
   })

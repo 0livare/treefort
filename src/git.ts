@@ -10,6 +10,7 @@ export type Worktree = {
   branch: string | null // short name, or null when detached
   head: string // commit hash
   isMain: boolean
+  isBare: boolean // bare-clone layout: the main entry is the bare repo itself
   isCurrent: boolean
 }
 
@@ -31,7 +32,12 @@ export async function listWorktrees(): Promise<Worktree[]> {
 
   const current = await currentWorktree()
   const worktrees: Worktree[] = []
-  let cur: {path?: string; head?: string; branch?: string | null} = {}
+  let cur: {
+    path?: string
+    head?: string
+    branch?: string | null
+    bare?: boolean
+  } = {}
 
   const flush = () => {
     if (!cur.path) return
@@ -40,6 +46,7 @@ export async function listWorktrees(): Promise<Worktree[]> {
       branch: cur.branch ?? null,
       head: cur.head ?? '',
       isMain: worktrees.length === 0,
+      isBare: cur.bare ?? false,
       isCurrent: cur.path === current,
     })
     cur = {}
@@ -55,6 +62,8 @@ export async function listWorktrees(): Promise<Worktree[]> {
       cur.branch = line.slice('branch refs/heads/'.length)
     } else if (line === 'detached') {
       cur.branch = null
+    } else if (line === 'bare') {
+      cur.bare = true
     }
   }
   flush()
@@ -286,10 +295,12 @@ export async function worktreeNames(): Promise<string[]> {
 }
 
 // Everything `wt cd` accepts: worktree names (incl. "root") + their branches.
+// A bare root is omitted — `wt root` still works, but it isn't suggested.
 export async function cdTargets(): Promise<string[]> {
   const worktrees = await listWorktrees()
   const targets = new Set<string>()
   for (const w of worktrees) {
+    if (w.isBare) continue
     targets.add(worktreeName(w))
     if (w.branch) targets.add(w.branch)
   }
