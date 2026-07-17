@@ -71,6 +71,12 @@ async function main() {
       // Explicit `wt cd [target]`; no target opens the picker.
       await cd(rest[0])
       break
+    case 'help':
+      help()
+      break
+    case 'version':
+      version()
+      break
     case 'install':
       await install()
       break
