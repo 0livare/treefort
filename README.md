@@ -50,7 +50,9 @@ wt      # pick a worktree from a list, then automatically cd into it
 
 ### 📦 Worktrees live *inside* your repo, not scattered beside it
 
-Everything lands under a hidden `.worktrees/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.worktrees/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories.
+Everything lands under a hidden `.worktrees/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.worktrees/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories, and the worktree keeps the full name — `feat/x` and `fix/x` never collide.
+
+Bare-clone layouts work too: run `wt` inside a bare repo and worktrees land in `<bare>/.worktrees`, with new branches forked from the trunk.
 
 ### 🌿 Your env files come along for free
 
@@ -62,19 +64,23 @@ A fresh worktree only gets what git tracks, so your gitignored `.env` files stay
 
 ```bash
 wt rm <fuzzy> # same fuzzy frecency matching as `wt` & `wt cd`
+              # (a fuzzy match asks y/N first)
+
 wt rm         # with no args either removes the current worktree 
               # or opens the interactive picker (if you're at the root worktree)
 ```
 
 ### 🛟 Branch cleanup that won't lose your work
 
-`wt rm feature-x` removes the worktree *and* deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch, so nothing is lost. If the commits exist nowhere else, the branch is kept. 
+`wt rm feature-x` removes the worktree *and* deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch  so nothing is lost. If the changes exist nowhere else, the branch is kept. 
+
+> **Squash Merges** are detected by patch-equivalence against the trunk
 
 Need to override? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`) deletes it even if commits would be lost.
 
 ### 🧹 Sweep up merged work in one shot
 
-Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main`. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
+Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main` — true merges *and* squash merges (GitHub's default), which ordinary `git branch --merged` can't see. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
 
 ### 🌱 Turn your current branch into a worktree
 
@@ -97,10 +103,6 @@ step.**
 
 ## Installation
 
-> ### Prerequisites
->
-> This package depends on [Bun being installed globally](https://bun.sh/docs/installation).
-
 ```bash
 # Create a global `wt` command
 npm i -g treefort
@@ -111,14 +113,16 @@ wt install
 
 `wt install` is idempotent. It:
 
-1. Adds `eval "$(command wt shell-init)"` to your `~/.zshrc`. This defines a `wt`
-   shell function that wraps the binary and performs the actual `cd` 
+1. Adds `eval "$(command wt shell-init <shell>)"` to your `~/.zshrc` or
+   `~/.bashrc` (detected from `$SHELL`). This defines a `wt` shell function
+   that wraps the binary and performs the actual `cd` 
    > A subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
-2. Ensures git's global excludes file (`core.excludesfile`, defaulting to
-   `~/.gitignore_global`) contains `.worktrees/`, so worktrees are ignored in every
-   repo.
+2. Ensures your global git excludes file contains `.worktrees/`, so worktrees
+   are ignored in every repo. It appends to `core.excludesfile` if set,
+   otherwise to an existing `~/.config/git/ignore`, and only creates
+   `~/.gitignore_global` when neither exists.
 
-After running it, open a new shell or `source ~/.zshrc`.
+After running it, open a new shell or `source` your rc file.
 
 ## Usage
 
@@ -187,7 +191,7 @@ wt exec @ -- git status
 ```
 
 Tab completion (worktree names for `rm`/`cd`/`exec`, branch names for `add`) is
-set up automatically by `wt install` for zsh.
+set up automatically by `wt install` for zsh and bash.
 
 ### Flags
 
@@ -212,9 +216,20 @@ subprocess). Instead:
   wt() {
     local dir
     dir=$(command wt "$@") || return
-    [ -n "$dir" ] && cd "$dir"
+    [ -n "$dir" ] || return 0
+    cd "$dir"
   }
   ```
+
+## Requirements
+
+- **[Bun](https://bun.sh/docs/installation)** installed globally — `wt` runs
+  straight from TypeScript, no build step
+- **git 2.13+** (anything remotely modern)
+- **zsh or bash** for the auto-`cd` shell wrapper and tab completion. Other
+  shells can still use the binary directly; `wt shell-init` prints the wrapper
+  to port
+- macOS or Linux
 
 ## Development
 
@@ -228,7 +243,7 @@ bun link      # makes `wt` resolve to this local checkout
 wt install    # one-time shell wrapper + global gitignore setup
 ```
 
-Before finishing a change, run the typecheck + lint gate:
+Before finishing a change, run the typecheck + lint + test gate:
 
 ```bash
 bun run pr
