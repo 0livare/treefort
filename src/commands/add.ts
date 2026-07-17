@@ -9,7 +9,7 @@ import {
   currentBranch,
   currentWorktree,
   detach,
-  mainRoot,
+  mainWorktree,
   WORKTREE_DIR,
   worktreeForBranch,
 } from '../git'
@@ -21,11 +21,12 @@ export async function add(
   startPoint: string | undefined,
   opts: {force?: boolean},
 ) {
-  const root = await mainRoot()
-  if (!root) {
+  const rootWorktree = await mainWorktree()
+  if (!rootWorktree) {
     printError('not a git repository')
     process.exit(1)
   }
+  const root = rootWorktree.path
 
   let branch = name
   let create: boolean
@@ -59,6 +60,13 @@ export async function add(
     process.exit(1)
   }
 
+  // Base for a new branch: '.' opts in to the current worktree's HEAD (git has
+  // no native syntax for this); with no start-point, always fork off wherever
+  // the root worktree is — never whichever worktree the shell happens to be in.
+  let base = startPoint
+  if (base === '.') base = 'HEAD'
+  else if (!base && create) base = rootWorktree.branch ?? rootWorktree.head
+
   const path = join(root, WORKTREE_DIR, branch)
 
   // If the branch is already checked out in the MAIN worktree, free it there
@@ -78,7 +86,7 @@ export async function add(
     path,
     branch,
     create,
-    startPoint,
+    startPoint: base,
     force: opts.force,
   })
   if (res.code !== 0) {

@@ -62,9 +62,13 @@ export async function listWorktrees(): Promise<Worktree[]> {
 }
 
 // The main worktree is always the first entry of `git worktree list`.
-export async function mainRoot(): Promise<string | null> {
+export async function mainWorktree(): Promise<Worktree | null> {
   const worktrees = await listWorktrees()
-  return worktrees[0]?.path ?? null
+  return worktrees[0] ?? null
+}
+
+export async function mainRoot(): Promise<string | null> {
+  return (await mainWorktree())?.path ?? null
 }
 
 // Display / lookup name: the main worktree is "root", others use their dir name.

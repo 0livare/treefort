@@ -48,10 +48,13 @@ export function help() {
   say()
   say(chalk.bold('Examples:'))
   say(
-    `  ${wt} ${c('add')} ${c('feature-x')}               New branch feature-x off HEAD, cd in`,
+    `  ${wt} ${c('add')} ${c('feature-x')}               New branch off the root worktree, cd in`,
   )
   say(
     `  ${wt} ${c('add')} ${c('feature-x origin/main')}   New branch off origin/main`,
+  )
+  say(
+    `  ${wt} ${c('add')} ${c('feature-x .')}             New branch off the current worktree`,
   )
   say(
     `  ${wt} ${c('add')}                         Move current branch into its own worktree`,

@@ -128,11 +128,15 @@ wt
 
 # Add a worktree and automatically cd into it.
 #   - if the branch exists, it's checked out
-#   - otherwise a new branch is created off HEAD
+#   - otherwise a new branch is created off the root worktree
+#     (even when you run this from inside another worktree)
 wt add feature-x
 
-# Base the new branch off something other than HEAD
+# Base the new branch off something else
 wt add feature-x origin/main
+
+# `.` means "base it off the worktree I'm standing in"
+wt add feature-x .
 
 # No name: move your *current* branch into its own worktree.
 wt add
