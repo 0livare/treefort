@@ -11,7 +11,6 @@ import {
   prune,
   remove,
   shellInit,
-  switchWorktree,
   version,
 } from './commands'
 
@@ -29,12 +28,6 @@ async function main() {
   }
 
   const [command, ...rest] = cli.positionals
-
-  // Bare `wt`: interactive switcher.
-  if (command === undefined) {
-    await switchWorktree()
-    return
-  }
 
   switch (command) {
     case 'add':
@@ -56,16 +49,8 @@ async function main() {
       await prune({force: cli.values.force})
       break
     case 'cd':
-      // No target behaves like bare `wt` (interactive picker).
-      if (rest[0] === undefined) await switchWorktree()
-      else await cd(rest[0])
-      break
-    case 'root':
-      await cd('@')
-      break
-    case '-':
-      // `wt -` is shorthand for `wt cd -` (toggle to the previous worktree).
-      await cd('-')
+      // Explicit `wt cd [target]`; no target opens the picker.
+      await cd(rest[0])
       break
     case 'exec':
       await exec(rest[0], rest.slice(1))
@@ -80,7 +65,8 @@ async function main() {
       await complete(rest[0])
       break
     default:
-      // `wt <name>` is shorthand for `wt cd <name>` (like `pnpm <script>`).
+      // cd is the default command: bare `wt` (picker), `wt <name>`, `wt -`,
+      // `wt @`, and `wt root` all resolve through the same cd path.
       await cd(command)
       break
   }
