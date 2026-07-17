@@ -1,6 +1,10 @@
 import {mkdir, rename} from 'node:fs/promises'
 import {basename, join} from 'node:path'
 
+// Directory (under the repo root) where wt creates worktrees and keeps its
+// per-repo state (.trash, .frecency.json, .previous).
+export const WORKTREE_DIR = '.worktrees'
+
 export type Worktree = {
   path: string
   branch: string | null // short name, or null when detached
@@ -177,14 +181,15 @@ export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
 }
 
-// Instantly retire a worktree: move it into .wkt/.trash via a same-fs rename
-// (so the caller returns without waiting on the delete), deregister it, then let
-// a detached rm -rf finish the slow filesystem delete. False = rename failed.
+// Instantly retire a worktree: move it into <WORKTREE_DIR>/.trash via a same-fs
+// rename (so the caller returns without waiting on the delete), deregister it,
+// then let a detached rm -rf finish the slow filesystem delete. False = rename
+// failed.
 export async function trashWorktree(
   root: string,
   worktreePath: string,
 ): Promise<boolean> {
-  const trashDir = join(root, '.wkt', '.trash')
+  const trashDir = join(root, WORKTREE_DIR, '.trash')
   await mkdir(trashDir, {recursive: true})
   const trashed = join(trashDir, `${basename(worktreePath)}-${Date.now()}`)
   try {

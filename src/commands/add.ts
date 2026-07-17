@@ -9,6 +9,7 @@ import {
   currentWorktree,
   detach,
   mainRoot,
+  WORKTREE_DIR,
   worktreeForBranch,
 } from '../git'
 import {printError, printInfo, printSuccess} from '../helpers'
@@ -57,7 +58,7 @@ export async function add(
     process.exit(1)
   }
 
-  const path = join(root, '.wkt', branch)
+  const path = join(root, WORKTREE_DIR, branch)
 
   // If the branch is already checked out in the MAIN worktree, free it there
   // first so this worktree can take it. A branch held by some OTHER worktree is
@@ -86,8 +87,8 @@ export async function add(
 
   printSuccess(
     create
-      ? `created ${branch} at .wkt/${branch}`
-      : `added worktree for ${branch} at .wkt/${branch}`,
+      ? `created ${branch} at ${WORKTREE_DIR}/${branch}`
+      : `added worktree for ${branch} at ${WORKTREE_DIR}/${branch}`,
   )
   // Remember where we were so `wt cd -` can bring us back.
   const from = await currentWorktree()

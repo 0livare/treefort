@@ -1,6 +1,6 @@
 import {homedir} from 'node:os'
 import {join} from 'node:path'
-import {globalExcludesFile, setGlobalExcludesFile} from '../git'
+import {globalExcludesFile, setGlobalExcludesFile, WORKTREE_DIR} from '../git'
 import {printInfo, printSuccess, say} from '../helpers'
 
 const EVAL_LINE = 'eval "$(command wt shell-init)"'
@@ -42,12 +42,13 @@ async function installGitExcludes() {
   const existing = (await file.exists()) ? await file.text() : ''
   const lines = existing.split('\n').map((l) => l.trim())
 
-  if (lines.includes('.wkt/') || lines.includes('.wkt')) {
-    printInfo(`${excludes} already ignores .wkt/`)
+  const ignore = `${WORKTREE_DIR}/`
+  if (lines.includes(ignore) || lines.includes(WORKTREE_DIR)) {
+    printInfo(`${excludes} already ignores ${ignore}`)
     return
   }
 
   const sep = existing === '' || existing.endsWith('\n') ? '' : '\n'
-  await Bun.write(resolved, `${existing}${sep}.wkt/\n`)
-  printSuccess(`added .wkt/ to ${excludes}`)
+  await Bun.write(resolved, `${existing}${sep}${ignore}\n`)
+  printSuccess(`added ${ignore} to ${excludes}`)
 }

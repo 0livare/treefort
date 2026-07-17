@@ -13,9 +13,9 @@ But the raw `git worktree` commands are clunky. You have manage all the file pat
 command and land in the right directory automatically.**
 
 ```sh
-wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.wkt/feature-x
+wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.worktrees/feature-x
 wt root              # jump back to the root worktree          --> pwd: /repo
-wt feat              # fuzzy-jump back to feature-x it later   --> pwd: /repo/.wkt/feature-x
+wt feat              # fuzzy-jump back to feature-x it later   --> pwd: /repo/.worktrees/feature-x
 wt rm                # gone, instantly                         --> pwd: /repo
 ```
 
@@ -50,7 +50,7 @@ wt      # pick a worktree from a list, then automatically cd into it
 
 ### 📦 Worktrees live *inside* your repo, not scattered beside it
 
-Everything lands under `.wkt/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.wkt/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories.
+Everything lands under a hidden `.worktrees/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.worktrees/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories.
 
 ### ⚡️ Removal returns *immediately*
 
@@ -70,7 +70,7 @@ Need to override? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`
 
 ### 🧹 Sweep up merged work in one shot
 
-Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main`. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.wkt/` is back to just the things you're still working on.
+Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main`. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
 
 ### 🌱 Turn your current branch into a worktree
 
@@ -104,7 +104,7 @@ wt install    # sets up the shell wrapper + global gitignore (one time)
    shell function that wraps the binary and performs the actual `cd` 
    > A subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
 2. Ensures git's global excludes file (`core.excludesfile`, defaulting to
-   `~/.gitignore_global`) contains `.wkt/`, so worktrees are ignored in every
+   `~/.gitignore_global`) contains `.worktrees/`, so worktrees are ignored in every
    repo.
 
 After running it, open a new shell or `source ~/.zshrc`.

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 `wt` — a CLI that makes git worktrees effortless (add / switch / remove, with
-auto-`cd`). Worktrees live under `.wkt/<name>` at the repo root.
+auto-`cd`). Worktrees live under `.worktrees/<name>` at the repo root.
 
 ## Stack
 
