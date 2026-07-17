@@ -1,4 +1,4 @@
-# `wt` — git worktrees without the work
+# Treefort - git worktrees without the work 🌳
 
 Git worktrees let you check out multiple branches at once, each in its own directory. AI has skyrocketed the use of worktrees so that multiple agents can work simultaneously without stepping on each other's toes.
 
@@ -9,7 +9,7 @@ But the raw `git worktree` commands are clunky. You have manage all the file pat
 - clean them up yourself when you're done
 
 
-`wt` makes worktrees effortless. **Add, switch, and remove worktrees in a single
+Treefort makes worktrees effortless. **Add, switch, and remove worktrees in a single
 command and land in the right directory automatically.**
 
 ```sh
@@ -97,12 +97,16 @@ step.**
 
 ## Installation
 
-Clone this repo, then:
+> ### Prerequisites
+>
+> This package depends on [Bun being installed globally](https://bun.sh/docs/installation).
 
 ```bash
-bun install
-bun link      # makes `wt` available globally
-wt install    # sets up the shell wrapper + global gitignore (one time)
+# Create a global `wt` command
+npm i -g treefort
+
+# Set up the shell wrapper + global gitignore (one time)
+wt install
 ```
 
 `wt install` is idempotent. It:
@@ -207,3 +211,21 @@ subprocess). Instead:
     [ -n "$dir" ] && cd "$dir"
   }
   ```
+
+## Development
+
+> You must have [Bun](https://bun.sh/docs/installation) installed globally.
+
+Install dependencies and point the global `wt` command at your local checkout:
+
+```bash
+bun install
+bun link      # makes `wt` resolve to this local checkout
+wt install    # one-time shell wrapper + global gitignore setup
+```
+
+Before finishing a change, run the typecheck + lint gate:
+
+```bash
+bun run pr
+```

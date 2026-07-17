@@ -23,7 +23,7 @@ async function installShell() {
   }
 
   const sep = existing === '' || existing.endsWith('\n') ? '' : '\n'
-  const block = `${sep}\n# git-worktree-cli shell wrapper (cd-on-add support)\n${EVAL_LINE}\n`
+  const block = `${sep}\n# treefort (wt) shell wrapper (cd-on-add support)\n${EVAL_LINE}\n`
   await Bun.write(zshrc, existing + block)
   printSuccess('added the wt shell function to ~/.zshrc')
   printInfo('run `source ~/.zshrc` or open a new shell to activate it')
