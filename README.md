@@ -6,11 +6,11 @@
 Git worktrees let you check out multiple branches at once, each in its own directory. AI has skyrocketed the use of worktrees so that multiple agents can work simultaneously without stepping on each other's toes.
 
 But the raw `git worktree` commands are clunky. You have manage all the file paths yourself:
+
 - come up with the paths
 - remember the paths
 - `cd` back and forth between them
 - clean them up yourself when you're done
-
 
 Treefort makes worktrees effortless. **Add, switch, and remove worktrees in a single
 command and land in the right directory automatically.**
@@ -18,19 +18,25 @@ command and land in the right directory automatically.**
 ```sh
 wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.worktrees/feature-x
 wt root              # jump back to the root worktree          --> pwd: /repo
-wt feat              # fuzzy-jump back to feature-x it later   --> pwd: /repo/.worktrees/feature-x
+wt feat              # fuzzy-jump back to feature-x later      --> pwd: /repo/.worktrees/feature-x
 wt rm                # gone, instantly                         --> pwd: /repo
 ```
 
-
 ## Why you'll like it
 
-### 🏃 You end up *inside* the worktree every time
+### 🏃 You end up _inside_ the worktree every time
 
-No remembering where the thing lives. No manually annoying `cd ../worktrees/foobar`.
+No remembering where the thing lives. No manual `cd ../worktrees/foobar` annoyances.
 
 `wt add`, `wt cd`, and the interactive picker all drop your shell straight into the right directory. You don't have to think about it.
 
+### 💅 Worktrees live inside the repo, where they belong
+
+Having worktrees live as siblings to the repo (or worse somewhere else entirely) is an organizational mess. Treefort keeps them tucked away in a `.worktrees/` directory at the root of your repo, that is automatically ignored by git.
+
+> Treefort works equally well with worktrees that you've created via Claude or any other method
+
+Bare-clone layouts work too: run wt inside a bare repo and worktrees land in <bare>/.worktrees, with new branches forked from the trunk.
 
 ### 🧠 Fuzzy + frecency navigation, like `zoxide` for worktrees
 
@@ -41,7 +47,7 @@ wt reg    # matches regularExpressionParser or codeFirstEndpointRegistry or core
 wt cd reg # equivalent. cd is the default command when one isn't specified
 ```
 
-When a fragment matches more than one worktree, `wt` picks the one you actually mean, ranked by **frecency** (how *frequently* and *recently* you've visited it). The worktrees you live in float to the top; the ones you forgot about sink.
+When a fragment matches more than one worktree, `wt` picks the one you actually mean, ranked by **frecency** (how _frequently_ and _recently_ you've visited it). The worktrees you live in float to the top; the ones you forgot about sink.
 
 ### 🎛️ An interactive picker, one keystroke away
 
@@ -51,31 +57,27 @@ Forgot the name entirely? Just run `wt` with no arguments and pick from a list. 
 wt      # pick a worktree from a list, then automatically cd into it
 ```
 
-### 📦 Worktrees live *inside* your repo, not scattered beside it
-
-Everything lands under a hidden `.worktrees/<name>` at your repo root, not in some `../worktrees` sibling directory you have to hunt for. `wt install` adds `.worktrees/` to your global gitignore once, so worktrees stay invisible to git in every repo you ever clone. Branch names with slashes become tidy subdirectories, and the worktree keeps the full name — `feat/x` and `fix/x` never collide.
-
-Bare-clone layouts work too: run `wt` inside a bare repo and worktrees land in `<bare>/.worktrees`, with new branches forked from the trunk.
-
 ### 🌿 Your env files come along for free
 
 A fresh worktree only gets what git tracks, so your gitignored `.env` files stay behind and nothing runs. `wt add` fixes that: it scans the main worktree (the root plus three levels down, skipping dotdirs and `node_modules`) and copies every `.env*` file — `.env`, `.env.local`, `.env.<mode>`, and friends — into the new worktree at the same relative path. Anything git already checked out is left untouched. No config, no flags, just a worktree that works on the first `cd`.
 
-### ⚡️ Removal returns *immediately*
+### ⚡️ Removal returns _immediately_
 
-`wt rm` deregisters the worktree and moves it out of the way _instantly_, then deletes the files in the background. Your prompt comes back ***now*** — not in 30s after `rm -rf` finishes churning through `node_modules`.
+`wt rm` deregisters the worktree and moves it out of the way _instantly_, then deletes the files in the background. Your prompt comes back _**now**_ — not in 30s after `rm -rf` finishes churning through `node_modules`.
 
 ```bash
-wt rm <fuzzy> # same fuzzy frecency matching as `wt` & `wt cd`
-              # (a fuzzy match asks y/N first)
+npm install   # no waiting for node_modules to be deleted later
 
-wt rm         # with no args either removes the current worktree 
+wt rm <fuzzy> # same fuzzy frecency matching as `wt` & `wt cd`
+              # (a fuzzy match asks y/n first)
+
+wt rm         # with no args either removes the current worktree
               # or opens the interactive picker (if you're at the root worktree)
 ```
 
 ### 🛟 Branch cleanup that won't lose your work
 
-`wt rm feature-x` removes the worktree *and* deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch  so nothing is lost. If the changes exist nowhere else, the branch is kept. 
+`wt rm feature-x` removes the worktree _and_ deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch so nothing is lost. If the changes exist nowhere else, the branch is kept.
 
 > **Squash Merges** are detected by patch-equivalence against the trunk
 
@@ -83,7 +85,7 @@ Need to override? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`
 
 ### 🧹 Sweep up merged work in one shot
 
-Shipped a batch of features? `wt prune` removes *every* worktree (and corresponding branch) whose branch is already merged into `main` — true merges *and* squash merges (GitHub's default), which ordinary `git branch --merged` can't see. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
+Shipped a batch of features? `wt prune` removes _every_ worktree (and corresponding branch) whose branch is already merged into `main` — true merges _and_ squash merges (GitHub's default), which ordinary `git branch --merged` can't see. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
 
 ### 🌱 Turn your current branch into a worktree
 
@@ -93,16 +95,13 @@ Want to create a worktree around an existing branch? No problem. Run `wt add` wi
 
 ```sh
 wt exec git pull --ff-only     # no target -> runs in the main (root) worktree
-wt exec feature-x -- bun test  # wk exec <other worktree> -- <command to run in other worktree> 
+wt exec feature-x -- bun test  # wk exec <other worktree> -- <command to run in other worktree>
 wt exec @ -- git fetch         # @ and root both mean the main worktree
 ```
 
-With no target the command runs in the root worktree, so `wt exec <command>` just works. To aim at another worktree, put its name (or `@`/`root`/`-`, resolved exactly like `wt cd`) before a `--` separator. Everything after `--` is the command, flags and all.
+With no target the command runs in the root worktree, so `wt exec <command>` just works. To aim at another worktree, put its name before a `--` separator; everything after `--` is the command, flags and all.
 
----
-
-Oh, and it's tiny and fast: **Bun + TypeScript, one runtime dependency, no build
-step.**
+> `@`, `root`, and `-`, can be used as the name as well, resolved exactly like `wt cd`.
 
 ## Installation
 
@@ -118,7 +117,7 @@ wt install
 
 1. Adds `eval "$(command wt shell-init <shell>)"` to your `~/.zshrc` or
    `~/.bashrc` (detected from `$SHELL`). This defines a `wt` shell function
-   that wraps the binary and performs the actual `cd` 
+   that wraps the binary and performs the actual `cd`
    > A subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
 2. Ensures your global git excludes file contains `.worktrees/`, so worktrees
    are ignored in every repo. It appends to `core.excludesfile` if set,
@@ -132,6 +131,9 @@ After running it, open a new shell or `source` your rc file.
 ```sh
 # Interactive worktree switcher — pick one and you're there
 wt
+
+# Show all the commands
+wt help
 
 # Add a worktree and automatically cd into it.
 #   - if the branch exists, it's checked out
@@ -173,7 +175,7 @@ wt @           # also equivalent
 wt rm feature-x
 
 # Remove interactively (pick from a list)
-wt rm
+wt rm                     # the longhand `wt remove` works too
 
 # Remove the worktree but always keep its branch
 wt rm feature-x -k        # or: --keep-branch
@@ -200,13 +202,13 @@ set up automatically by `wt install` for zsh and bash.
 
 ### Flags
 
-| Flag                    | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `-f`, `--force`         | Skip the dirty-worktree / checkout guard       |
-| `-k`, `--keep-branch`   | Keep the branch (`rm` deletes it when safe)    |
-| `-D`, `--force-branch`  | Delete the branch even if commits would be lost |
-| `-v`, `--version`       | Print version number                           |
-| `-h`, `--help`          | Print help information                         |
+| Flag                   | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `-f`, `--force`        | Skip the dirty-worktree / checkout guard        |
+| `-k`, `--keep-branch`  | Keep the branch (`rm` deletes it when safe)     |
+| `-D`, `--force-branch` | Delete the branch even if commits would be lost |
+| `-v`, `--version`      | Print version number                            |
+| `-h`, `--help`         | Print help information                          |
 
 ## How the auto-`cd` works
 
