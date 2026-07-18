@@ -1,7 +1,7 @@
 import {existsSync} from 'node:fs'
 import {rank, recordAccess} from '../frecency'
 import {listWorktrees, type Worktree, worktreeName} from '../git'
-import {printError} from '../helpers'
+import {printError, printInfo} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
 import {confirm, isInteractive} from '../select'
@@ -50,10 +50,14 @@ async function pick(
   worktrees: Worktree[],
   root: string,
 ): Promise<string | null> {
-  const ordered = await rank(
-    root,
-    worktrees.filter((w) => !w.isBare),
-  )
+  const pickable = worktrees.filter((w) => !w.isBare)
+  // Only the root worktree exists — there's nothing else to switch to, so skip
+  // the one-entry picker and tell the user how to make more.
+  if (pickable.every((w) => w.path === root)) {
+    printInfo('no other worktrees — run `wt add <name>` to create one')
+    return null
+  }
+  const ordered = await rank(root, pickable)
   const firstOther = ordered.findIndex((w) => !w.isCurrent)
   const chosen = await pickWorktree(ordered, {
     title: 'Switch to worktree',

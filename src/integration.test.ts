@@ -242,6 +242,14 @@ test('interactive commands fail cleanly without a TTY', async () => {
   expect(fuzzyRm.stderr).toContain('closest match is feature')
 })
 
+test('bare cd with only the root worktree explains instead of showing a picker', async () => {
+  const repo = await makeRepo()
+  const picker = await wt(repo)
+  expect(picker.code).toBe(0)
+  expect(picker.stdout).toBe('')
+  expect(picker.stderr).toContain('no other worktrees')
+})
+
 test('cd resolves names and toggles with -', async () => {
   const repo = await makeRepo()
   const feature = (await wt(repo, 'add', 'feature')).stdout
