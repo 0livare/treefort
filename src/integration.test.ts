@@ -211,6 +211,23 @@ test('rm deletes a squash-merged branch but keeps an unmerged one', async () => 
   expect((await git(repo, 'branch', '--list', 'unmerged')).stdout).not.toBe('')
 })
 
+test('rm on a dirty worktree errors without a TTY, lists changes, and --force removes it', async () => {
+  const repo = await makeRepo()
+  const feature = (await wt(repo, 'add', 'feature')).stdout
+  writeFileSync(join(feature, 'wip.txt'), 'wip\n')
+
+  // No TTY here, so there's nobody to prompt — it must error and name --force.
+  const refused = await wt(repo, 'rm', 'feature')
+  expect(refused.code).toBe(1)
+  expect(refused.stderr).toContain('uncommitted changes')
+  expect(refused.stderr).toContain('--force')
+  expect(refused.stderr).toContain('wip.txt') // lists the changed files
+
+  const forced = await wt(repo, 'rm', 'feature', '-f')
+  expect(forced.code).toBe(0)
+  expect(forced.stderr).toContain('removed feature')
+})
+
 test('bare repos: add forks from trunk, root is labeled and unsuggested', async () => {
   const src = await makeRepo()
   const bare = join(scratch, 'bare.git')

@@ -1,3 +1,4 @@
+import chalk from '../chalk'
 import {rank} from '../frecency'
 import {
   branchIsSafeToDelete,
@@ -46,14 +47,27 @@ export async function remove(
   }
 
   // Dirty guard (checked against the worktree's own path, still present here).
+  // On a terminal we show the changes and ask to remove anyway, rather than
+  // making the user re-run with --force. Without one (scripts, or the wrapper
+  // capturing stdout) there's nobody to ask, so we error and point at --force.
   if (!opts.force) {
     const status = await worktreeStatus(target.path)
     if (status) {
+      if (!isInteractive()) {
+        printError(
+          `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
+        )
+        for (const line of status.split('\n')) printInfo(line)
+        process.exit(1)
+      }
       printError(
-        `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
+        `${worktreeName(target)} has uncommitted changes that will be permanently lost:`,
       )
       for (const line of status.split('\n')) printInfo(line)
-      process.exit(1)
+      const question = chalk.red(
+        `permanently remove ${worktreeName(target)} and discard these changes?`,
+      )
+      if (!(await confirm(question))) process.exit(0)
     }
   }
 

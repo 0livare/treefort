@@ -36,7 +36,7 @@ export function help() {
     ],
     [
       `${wt} ${c('rm')} ${c('[name]')}`,
-      'Remove a worktree (deletes in background)',
+      `Remove a worktree (deletes in background)${chalk.dim(' (alias: remove)')}`,
     ],
     [`${wt} ${c('prune')}`, 'Remove all worktrees merged into main'],
     [`${wt} ${c('list')}${chalk.dim(', ')}${c('ls')}`, 'List all worktrees'],
