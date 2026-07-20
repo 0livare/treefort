@@ -143,11 +143,10 @@ export async function add(
 
   printSuccess(
     create
-      ? track
-        ? `created ${branch} at ${WORKTREE_DIR}/${branch}, tracking ${base}`
-        : `created ${branch} at ${WORKTREE_DIR}/${branch}`
+      ? `created ${branch} at ${WORKTREE_DIR}/${branch}`
       : `added worktree for ${branch} at ${WORKTREE_DIR}/${branch}`,
   )
+  if (create && track) printSuccess(`  tracking ${base}`)
 
   // Bring over env files git won't (gitignored .env*), from the main worktree.
   // A bare root has no working files to copy.
