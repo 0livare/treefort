@@ -193,6 +193,11 @@ export function checkout(
   return run(['git', 'checkout', ref], worktreePath)
 }
 
+// Fast-forward a worktree from its branch's configured upstream.
+export function pull(worktreePath: string): Promise<RunResult> {
+  return run(['git', 'pull', '--ff-only'], worktreePath)
+}
+
 export type AddOptions = {
   path: string
   branch: string

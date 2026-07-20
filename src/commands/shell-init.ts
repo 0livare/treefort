@@ -29,7 +29,7 @@ const zshCompletion = `_wt() {
   fi
   if (( CURRENT == 3 )); then
     case "\${words[2]}" in
-      rm|remove|exec)
+      rm|remove|exec|ff)
         compadd -- \${(f)"$(command wt __complete worktrees 2>/dev/null)"}
         ;;
       cd)
@@ -50,7 +50,7 @@ const bashCompletion = `_wt() {
     candidates=$(command wt __complete cd 2>/dev/null)
   elif (( COMP_CWORD == 2 )); then
     case "\${COMP_WORDS[1]}" in
-      rm|remove|exec) candidates=$(command wt __complete worktrees 2>/dev/null) ;;
+      rm|remove|exec|ff) candidates=$(command wt __complete worktrees 2>/dev/null) ;;
       cd) candidates=$(command wt __complete cd 2>/dev/null) ;;
       add) candidates=$(command wt __complete branches 2>/dev/null) ;;
     esac

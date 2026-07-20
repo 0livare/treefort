@@ -5,6 +5,7 @@ import {
   cd,
   complete,
   exec,
+  ff,
   help,
   install,
   list,
@@ -70,6 +71,9 @@ async function main() {
     case 'cd':
       // Explicit `wt cd [target]`; no target opens the picker.
       await cd(rest[0])
+      break
+    case 'ff':
+      await ff(rest[0])
       break
     case 'help':
       help()
