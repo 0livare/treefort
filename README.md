@@ -18,7 +18,7 @@ command and land in the right directory automatically.**
 ```sh
 wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.worktrees/feature-x
 wt root              # jump back to the root worktree          --> pwd: /repo
-wt feat              # fuzzy-jump back to feature-x later      --> pwd: /repo/.worktrees/feature-x
+wt feat              # jump back to feature-x later            --> pwd: /repo/.worktrees/feature-x
 wt rm                # gone, instantly                         --> pwd: /repo
 ```
 
@@ -38,7 +38,7 @@ Having worktrees live as siblings to the repo (or worse somewhere else entirely)
 
 Bare-clone layouts work too: run wt inside a bare repo and worktrees land in <bare>/.worktrees, with new branches forked from the trunk.
 
-### 🧠 Fuzzy + frecency navigation, like `zoxide` for worktrees
+### 🧠 Partial + frecency navigation, like `zoxide` for worktrees
 
 You don't type paths. You don't even have to type full names. Type a fragment and `wt` finds it:
 
@@ -68,8 +68,8 @@ A fresh worktree only gets what git tracks, so your gitignored `.env` files stay
 ```bash
 npm install   # no waiting for node_modules to be deleted later
 
-wt rm <fuzzy> # same fuzzy frecency matching as `wt` & `wt cd`
-              # (a fuzzy match asks y/n first)
+wt rm <partial> # same partial frecency matching as `wt` & `wt cd`
+                # (a partial match asks y/n first)
 
 wt rm         # with no args either removes the current worktree
               # or opens the interactive picker (if you're at the root worktree)
@@ -155,7 +155,7 @@ wt add
 # List all worktrees (current is marked, dirty ones flagged)
 wt list        # or: wt ls
 
-# move to a worktree by name or branch (fuzzy with frecency — a fragment is enough)
+# move to a worktree by name or branch (partial with frecency — a fragment is enough)
 wt cd feature-x
 wt feature-x       # shorthand for `wt cd feature-x`
 wt                 # no args opens the interactive picker (same as `wt cd`)
