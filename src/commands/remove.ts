@@ -70,11 +70,13 @@ export async function remove(
         process.exit(1)
       }
 
-      say(chalk.redBright.bold(`  ${worktreeName(target)} has uncommitted changes that will be permanently lost:`))
-      showChanges(status, 4)
-      const question = chalk.red(
-        `permanently remove ${worktreeName(target)}?`,
+      say(
+        chalk.redBright.bold(
+          `  ${worktreeName(target)} has uncommitted changes that will be permanently lost:`,
+        ),
       )
+      showChanges(status, 4)
+      const question = chalk.red(`permanently remove ${worktreeName(target)}?`)
       if (!(await confirm(question))) process.exit(0)
     }
   }
@@ -129,7 +131,8 @@ export async function remove(
 
 // Print `git status --short` output, one blue line per pending change.
 function showChanges(status: string, padding = 2) {
-  for (const line of status.split('\n')) say(chalk.cyan(`${' '.repeat(padding)}${line}`))
+  for (const line of status.split('\n'))
+    say(chalk.cyan(`${' '.repeat(padding)}${line}`))
   say()
 }
 

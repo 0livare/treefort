@@ -23,7 +23,10 @@ async function run(cmd: string[], cwd?: string): Promise<RunResult> {
   const stderrP = new Response(proc.stderr).text()
   const code = await proc.exited
   const [stdout, stderr] = await Promise.all([stdoutP, stderrP])
-  return {code, stdout: stdout.trim(), stderr: stderr.trim()}
+  // Trailing-only trim on stdout: `git status --short` uses a significant
+  // leading column (e.g. ` M file` for an unstaged change), and a blanket
+  // .trim() would strip the first line's leading space and misreport it.
+  return {code, stdout: stdout.replace(/\s+$/, ''), stderr: stderr.trim()}
 }
 
 export async function listWorktrees(): Promise<Worktree[]> {

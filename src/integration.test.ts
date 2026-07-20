@@ -228,6 +228,26 @@ test('rm on a dirty worktree errors without a TTY, lists changes, and --force re
   expect(forced.stderr).toContain('removed feature')
 })
 
+test('rm preserves the status column of an unstaged change', async () => {
+  const repo = await makeRepo()
+  const feature = (await wt(repo, 'add', 'feature')).stdout
+  // The first `git status --short` line is a tracked-but-unstaged change,
+  // printed as ` M a-mod.txt` — a leading space in the index column. A blanket
+  // stdout trim would drop it, shifting that filename one column left of the
+  // untracked line below it (and making an unstaged change read as staged).
+  writeFileSync(join(feature, 'file.txt'), 'changed\n') // -> " M file.txt"
+  writeFileSync(join(feature, 'z-new.txt'), 'new\n') // -> "?? z-new.txt"
+
+  const refused = await wt(repo, 'rm', 'feature')
+  expect(refused.code).toBe(1)
+  const modLine = refused.stderr.split('\n').find((l) => l.includes('file.txt'))
+  const newLine = refused.stderr
+    .split('\n')
+    .find((l) => l.includes('z-new.txt'))
+  // Both status columns are two chars wide, so the filenames must line up.
+  expect(modLine?.indexOf('file.txt')).toBe(newLine?.indexOf('z-new.txt') ?? -1)
+})
+
 test('bare repos: add forks from trunk, root is labeled and unsuggested', async () => {
   const src = await makeRepo()
   const bare = join(scratch, 'bare.git')
