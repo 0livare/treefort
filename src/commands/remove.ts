@@ -3,13 +3,14 @@ import {rank} from '../frecency'
 import {
   branchIsSafeToDelete,
   deleteBranch,
+  isDirty,
   listWorktrees,
   trashWorktree,
   type Worktree,
   worktreeName,
   worktreeStatus,
 } from '../git'
-import {printError, printInfo, printSuccess, printWarning} from '../helpers'
+import {printError, printSuccess, printWarning, say} from '../helpers'
 import {matchesQuery} from '../match'
 import {confirm, isInteractive} from '../select'
 import {pickWorktree} from '../worktree-picker'
@@ -35,12 +36,20 @@ export async function remove(
   if (name) {
     target = await resolveRemovable(name, removable, root)
   } else {
+    // Flag worktrees with uncommitted changes so the picker can mark them.
+    const dirty = new Set<string>()
+    await Promise.all(
+      removable.map(async (w) => {
+        if (await isDirty(w.path)) dirty.add(w.path)
+      }),
+    )
     // Default the cursor to the worktree you're in, so Enter removes it.
     const currentIndex = removable.findIndex((w) => w.isCurrent)
     const chosen = await pickWorktree(removable, {
       title: 'Remove worktree',
       initialIndex: currentIndex >= 0 ? currentIndex : undefined,
       emptyMessage: 'no worktrees to remove',
+      dirty,
     })
     if (!chosen) process.exit(0)
     target = chosen
@@ -57,15 +66,14 @@ export async function remove(
         printError(
           `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
         )
-        for (const line of status.split('\n')) printInfo(line)
+        showChanges(status)
         process.exit(1)
       }
-      printError(
-        `${worktreeName(target)} has uncommitted changes that will be permanently lost:`,
-      )
-      for (const line of status.split('\n')) printInfo(line)
+
+      say(chalk.redBright.bold(`  ${worktreeName(target)} has uncommitted changes that will be permanently lost:`))
+      showChanges(status, 4)
       const question = chalk.red(
-        `permanently remove ${worktreeName(target)} and discard these changes?`,
+        `permanently remove ${worktreeName(target)}?`,
       )
       if (!(await confirm(question))) process.exit(0)
     }
@@ -117,6 +125,12 @@ export async function remove(
 
   // If we removed the worktree we were in, cd the wrapper back to the root.
   if (isCurrent) process.stdout.write(`${root}\n`)
+}
+
+// Print `git status --short` output, one blue line per pending change.
+function showChanges(status: string, padding = 2) {
+  for (const line of status.split('\n')) say(chalk.cyan(`${' '.repeat(padding)}${line}`))
+  say()
 }
 
 // Resolve a target the same way cd does — exact name/branch first, then fuzzy
