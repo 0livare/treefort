@@ -6,11 +6,8 @@ auto-`cd`). Worktrees live under `.worktrees/<name>` at the repo root.
 ## Stack
 
 - **Bun + TypeScript**, no build step — the bin (`wt`) points straight at `src/main.ts`.
-- Only runtime dep is `chalk`. Args parsed with `node:util`'s `parseArgs`.
 - **Biome** for formatting + linting. No CLI framework.
-- Tests run with `bun test`: unit tests (`src/match.test.ts`) plus an
-  integration suite (`src/integration.test.ts`) that drives the CLI as a
-  subprocess against throwaway repos.
+- Tests run with `bun test`: unit tests plus an integration suite (`src/integration.test.ts`) that drives the CLI as a subprocess against throwaway repos.
 
 ## Layout
 
