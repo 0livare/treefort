@@ -277,6 +277,58 @@ test('exec runs in the root worktree and 127s on unknown commands', async () => 
   expect(missing.stderr).toContain('command not found')
 })
 
+test('ff fast-forwards the root worktree from its upstream by default', async () => {
+  const src = await makeRepo()
+  const repo = join(scratch, 'clone-ff-root')
+  await git(scratch, 'clone', '-q', src, repo)
+
+  // Advance the remote's main past the clone.
+  writeFileSync(join(src, 'more.txt'), 'more\n')
+  await git(src, 'add', '.')
+  await git(src, 'commit', '-q', '-m', 'remote advance')
+
+  const res = await wt(repo, 'ff')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe('') // pure action: no path, so the shell stays put
+  expect(res.stderr).toContain('fast-forwarded main')
+  expect(await tip(repo, 'main')).toBe(await tip(src, 'main'))
+})
+
+test('ff fast-forwards a named worktree', async () => {
+  const src = await makeRepo()
+  await git(src, 'checkout', '-q', '-b', 'feat')
+  writeFileSync(join(src, 'f.txt'), 'f\n')
+  await git(src, 'add', '.')
+  await git(src, 'commit', '-q', '-m', 'feat work')
+  await git(src, 'checkout', '-q', 'main')
+
+  const repo = join(scratch, 'clone-ff-named')
+  await git(scratch, 'clone', '-q', src, repo)
+  await wt(repo, 'add', 'feat') // tracks origin/feat
+
+  // Advance the remote's feat branch past the worktree.
+  await git(src, 'checkout', '-q', 'feat')
+  writeFileSync(join(src, 'f2.txt'), 'f2\n')
+  await git(src, 'add', '.')
+  await git(src, 'commit', '-q', '-m', 'feat advance')
+  await git(src, 'checkout', '-q', 'main')
+
+  const res = await wt(repo, 'ff', 'feat')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe('')
+  expect(res.stderr).toContain('fast-forwarded feat')
+  expect(await tip(repo, 'feat')).toBe(await tip(src, 'feat'))
+})
+
+test('ff errors when the branch has no upstream', async () => {
+  const repo = await makeRepo()
+  await wt(repo, 'add', 'local') // new local branch, no upstream to pull from
+
+  const res = await wt(repo, 'ff', 'local')
+  expect(res.code).not.toBe(0)
+  expect(res.stderr).toMatch(/tracking|upstream/i)
+})
+
 test('shell-init emits the wrapper with per-shell completion', async () => {
   const repo = await makeRepo()
   const zsh = await wt(repo, 'shell-init', 'zsh')
