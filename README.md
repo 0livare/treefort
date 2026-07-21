@@ -105,6 +105,10 @@ With no target the command runs in the root worktree, so `wt exec <command>` jus
 
 ## Installation
 
+> ### Prerequisite - Bun
+> This package depends on Bun being [installed globally](https://bun.sh/docs/installation)
+
+
 ```bash
 # Create a global `wt` command
 npm i -g treefort
