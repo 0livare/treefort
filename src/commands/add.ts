@@ -141,11 +141,7 @@ export async function add(
     process.exit(1)
   }
 
-  printSuccess(
-    create
-      ? `created ${branch} at ${WORKTREE_DIR}/${branch}`
-      : `added worktree for ${branch} at ${WORKTREE_DIR}/${branch}`,
-  )
+  printSuccess(`created ${WORKTREE_DIR}/${branch}`)
   if (create && track) printSuccess(`  tracking ${base}`)
 
   // Bring over env files git won't (gitignored .env*), from the main worktree.
