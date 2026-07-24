@@ -1,5 +1,5 @@
 import {mkdir, rename} from 'node:fs/promises'
-import {basename, join} from 'node:path'
+import {basename, join, resolve} from 'node:path'
 
 // Directory (under the repo root) where wt creates worktrees and keeps its
 // per-repo state (.trash, .frecency.json, .previous).
@@ -346,6 +346,13 @@ export async function branchNames(): Promise<string[]> {
   ])
   if (code !== 0) return []
   return stdout.split('\n').filter((n) => n && !n.endsWith('/HEAD'))
+}
+
+// Absolute path of the shared .git directory — the main repo's, even when
+// run from inside a linked worktree — or null outside a repo.
+export async function commonGitDir(): Promise<string | null> {
+  const {code, stdout} = await run(['git', 'rev-parse', '--git-common-dir'])
+  return code === 0 ? resolve(stdout) : null
 }
 
 export async function globalExcludesFile(): Promise<string | null> {

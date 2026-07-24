@@ -1,7 +1,12 @@
 import {existsSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {basename, join} from 'node:path'
-import {globalExcludesFile, setGlobalExcludesFile, WORKTREE_DIR} from '../git'
+import {
+  commonGitDir,
+  globalExcludesFile,
+  setGlobalExcludesFile,
+  WORKTREE_DIR,
+} from '../git'
 import {printInfo, printSuccess, printWarning, say} from '../helpers'
 
 // The shell name is baked into the line so the emitted wrapper/completion
@@ -17,6 +22,7 @@ export async function install() {
   say()
   await installShell()
   await installGitExcludes()
+  await installRepoExcludes()
   say()
 }
 
@@ -67,17 +73,33 @@ async function installGitExcludes() {
   }
 
   const resolved = excludes.replace(/^~(?=$|\/)/, homedir())
-  const file = Bun.file(resolved)
+  await ensureExcludeLine(resolved, excludes)
+}
+
+// Tools like biome read a repo's .gitignore and .git/info/exclude but not the
+// global excludes file, so when run inside a repo also ignore .worktrees/
+// there. .git/info/exclude is never committed, so collaborators never see it.
+async function installRepoExcludes() {
+  const gitDir = await commonGitDir()
+  if (!gitDir) return
+
+  await ensureExcludeLine(join(gitDir, 'info', 'exclude'), '.git/info/exclude')
+}
+
+// Appends `.worktrees/` to the ignore file at `path` unless some line already
+// covers it.
+async function ensureExcludeLine(path: string, displayPath: string) {
+  const file = Bun.file(path)
   const existing = (await file.exists()) ? await file.text() : ''
   const lines = existing.split('\n').map((l) => l.trim())
 
   const ignore = `${WORKTREE_DIR}/`
   if (lines.includes(ignore) || lines.includes(WORKTREE_DIR)) {
-    printInfo(`${excludes} already ignores ${ignore}`)
+    printInfo(`${displayPath} already ignores ${ignore}`)
     return
   }
 
   const sep = existing === '' || existing.endsWith('\n') ? '' : '\n'
-  await Bun.write(resolved, `${existing}${sep}${ignore}\n`)
-  printSuccess(`added ${ignore} to ${excludes}`)
+  await Bun.write(path, `${existing}${sep}${ignore}\n`)
+  printSuccess(`added ${ignore} to ${displayPath}`)
 }

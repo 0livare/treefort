@@ -127,6 +127,11 @@ wt install
    are ignored in every repo. It appends to `core.excludesfile` if set,
    otherwise to an existing `~/.config/git/ignore`, and only creates
    `~/.gitignore_global` when neither exists.
+3. When run inside a git repo, also adds `.worktrees/` to that repo's
+   `.git/info/exclude` (local-only, never committed). Some tools — biome, for
+   one — read a repo's ignore files but not the global excludes, and would
+   otherwise scan the worktrees. Rerun `wt install` in each repo where you
+   want this.
 
 After running it, open a new shell or `source` your rc file.
 

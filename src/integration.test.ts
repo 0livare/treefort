@@ -366,6 +366,42 @@ test('ff errors when the branch has no upstream', async () => {
   expect(res.stderr).toMatch(/tracking|upstream/i)
 })
 
+test('install is idempotent across repeated runs and repos', async () => {
+  // Fully isolated home so nothing leaks into the host machine or other tests.
+  const home = join(scratch, 'install-home')
+  const env = {
+    ...ENV,
+    HOME: home,
+    XDG_CONFIG_HOME: join(home, '.config'),
+    GIT_CONFIG_GLOBAL: join(home, 'gitconfig'),
+    SHELL: '/bin/zsh',
+  }
+  const install = (cwd: string) =>
+    Bun.spawn(['bun', MAIN, 'install'], {cwd, env, stdin: 'ignore'}).exited
+
+  const repoA = await makeRepo()
+  const repoB = await makeRepo()
+  expect(await install(repoA)).toBe(0)
+  expect(await install(repoA)).toBe(0) // same repo twice
+  expect(await install(repoB)).toBe(0) // then a different repo
+
+  const once = async (path: string) => {
+    const lines = (await Bun.file(path).text()).split('\n')
+    expect(lines.filter((l) => l === '.worktrees/')).toHaveLength(1)
+  }
+
+  // Global files gained exactly one entry despite three runs.
+  await once(join(home, '.gitignore_global'))
+  const rc = await Bun.file(join(home, '.zshrc')).text()
+  expect(rc.match(/command wt shell-init/g)).toHaveLength(1)
+  const config = await Bun.file(join(home, 'gitconfig')).text()
+  expect(config.match(/excludesfile/gi)).toHaveLength(1)
+
+  // Each repo's local excludes gained exactly one entry.
+  await once(join(repoA, '.git', 'info', 'exclude'))
+  await once(join(repoB, '.git', 'info', 'exclude'))
+})
+
 test('shell-init emits the wrapper with per-shell completion', async () => {
   const repo = await makeRepo()
   const zsh = await wt(repo, 'shell-init', 'zsh')
