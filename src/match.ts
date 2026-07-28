@@ -1,26 +1,17 @@
-// zoxide-style query matching (case-insensitive):
-//   1. the query is split into whitespace-separated keywords;
-//   2. all keywords must appear in `target` in order;
-//   3. the last keyword's last `/`-component must appear in `target`'s last
-//      `/`-component.
-// For flat worktree names (no slash) this reduces to a substring match, e.g.
-// `reg` matches `codeFirstEndpointRegistry`.
+// Query matching (case-insensitive): the query is split into
+// whitespace-separated keywords, and every keyword must appear in `target` in
+// order with at least one character between consecutive keywords — a space
+// represents a gap, so `a b` behaves like the regex `a.+b`. A single keyword
+// is a plain substring match, e.g. `reg` matches `codeFirstEndpointRegistry`.
 export function matchesQuery(query: string, target: string): boolean {
-  const path = target.toLowerCase()
+  const name = target.toLowerCase()
   const keywords = query.toLowerCase().split(/\s+/).filter(Boolean)
-  if (keywords.length === 0) return true
 
-  // Rule 2: every keyword occurs in order.
   let idx = 0
-  for (const kw of keywords) {
-    const pos = path.indexOf(kw, idx)
+  for (const [i, kw] of keywords.entries()) {
+    const pos = name.indexOf(kw, i === 0 ? 0 : idx + 1)
     if (pos < 0) return false
     idx = pos + kw.length
   }
-
-  // Rule 3: last keyword's last component lies within the path's last component.
-  const lastKw = keywords[keywords.length - 1]
-  const lastKwComponent = lastKw.slice(lastKw.lastIndexOf('/') + 1)
-  const pathLastComponent = path.slice(path.lastIndexOf('/') + 1)
-  return pathLastComponent.includes(lastKwComponent)
+  return true
 }
