@@ -1,9 +1,9 @@
 import {mkdir} from 'node:fs/promises'
 import {join} from 'node:path'
-import {listWorktrees, WORKTREE_DIR, type Worktree, worktreeName} from './git'
+import {listWorktrees, stateDir, type Worktree, worktreeName} from './git'
 
-// Per-repo frecency database for ranking worktrees, stored under the worktrees
-// dir (so it's gitignored). Keyed by absolute worktree path.
+// Per-repo frecency database for ranking worktrees, stored in the state dir
+// (inside .git, so git never sees it). Keyed by absolute worktree path.
 type Entry = {score: number; lastAccess: number}
 type Db = Record<string, Entry>
 
@@ -11,10 +11,11 @@ const HOUR = 3_600_000
 const DAY = 24 * HOUR
 const WEEK = 7 * DAY
 
-const fileFor = (root: string) => join(root, WORKTREE_DIR, '.frecency.json')
+const fileFor = async (root: string) =>
+  join(await stateDir(root), 'frecency.json')
 
 async function load(root: string): Promise<Db> {
-  const file = Bun.file(fileFor(root))
+  const file = Bun.file(await fileFor(root))
   if (!(await file.exists())) return {}
   try {
     const data = JSON.parse(await file.text())
@@ -25,8 +26,8 @@ async function load(root: string): Promise<Db> {
 }
 
 async function save(root: string, db: Db): Promise<void> {
-  await mkdir(join(root, WORKTREE_DIR), {recursive: true})
-  await Bun.write(fileFor(root), JSON.stringify(db))
+  await mkdir(await stateDir(root), {recursive: true})
+  await Bun.write(await fileFor(root), JSON.stringify(db))
 }
 
 // zoxide's frecency curve applied to a single entry.

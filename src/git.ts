@@ -1,8 +1,7 @@
 import {mkdir, rename} from 'node:fs/promises'
 import {basename, join, resolve} from 'node:path'
 
-// Directory (under the repo root) where wt creates worktrees and keeps its
-// per-repo state (.trash, .frecency.json, .previous).
+// Directory (under the repo root) where wt creates worktrees.
 export const WORKTREE_DIR = '.worktrees'
 
 export type Worktree = {
@@ -227,7 +226,7 @@ export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
 }
 
-// Instantly retire a worktree: move it into <WORKTREE_DIR>/.trash via a same-fs
+// Instantly retire a worktree: move it into the state dir's trash via a same-fs
 // rename (so the caller returns without waiting on the delete), deregister it,
 // then let a detached rm -rf finish the slow filesystem delete. False = rename
 // failed.
@@ -235,7 +234,7 @@ export async function trashWorktree(
   root: string,
   worktreePath: string,
 ): Promise<boolean> {
-  const trashDir = join(root, WORKTREE_DIR, '.trash')
+  const trashDir = join(await stateDir(root), 'trash')
   await mkdir(trashDir, {recursive: true})
   const trashed = join(trashDir, `${basename(worktreePath)}-${Date.now()}`)
   try {
@@ -356,9 +355,16 @@ export async function branchNames(): Promise<string[]> {
 
 // Absolute path of the shared .git directory — the main repo's, even when
 // run from inside a linked worktree — or null outside a repo.
-export async function commonGitDir(): Promise<string | null> {
-  const {code, stdout} = await run(['git', 'rev-parse', '--git-common-dir'])
-  return code === 0 ? resolve(stdout) : null
+export async function commonGitDir(cwd?: string): Promise<string | null> {
+  const {code, stdout} = await run(['git', 'rev-parse', '--git-common-dir'], cwd)
+  return code === 0 ? resolve(cwd ?? '.', stdout) : null
+}
+
+// Where wt keeps its per-repo state (trash, frecency, previous). It lives in
+// the shared .git dir rather than alongside the worktrees so it doesn't depend
+// on which layout the repo uses, and so it never shows up in `git status`.
+export async function stateDir(root: string): Promise<string> {
+  return join((await commonGitDir(root)) ?? join(root, '.git'), 'wt')
 }
 
 export async function globalExcludesFile(): Promise<string | null> {
