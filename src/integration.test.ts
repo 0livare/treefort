@@ -108,6 +108,19 @@ test('both worktree layouts are recognized side by side', async () => {
   expect((await wt(repo, 'cd', 'feat/new')).stdout).toBe(managed)
 })
 
+test('rm deregisters a locked worktree', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'locked')).stdout
+  // Claude Code locks every worktree it opens, and the lock outlives the
+  // session — `git worktree prune` skips locked worktrees, so without an
+  // unlock the registration would survive the removal.
+  await git(repo, 'worktree', 'lock', path)
+
+  const res = await wt(repo, 'rm', 'locked', '-k')
+  expect(res.code).toBe(0)
+  expect((await git(repo, 'worktree', 'list')).stdout).not.toContain('locked')
+})
+
 test('add forks from the root worktree, not the shell cwd', async () => {
   const repo = await makeRepo()
   const a = (await wt(repo, 'add', 'a')).stdout

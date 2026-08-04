@@ -256,6 +256,13 @@ export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
 }
 
+// Clear a `git worktree lock`. Claude Code locks every worktree it opens and
+// leaves the lock behind after the session exits. Failure is expected and
+// ignored — the common case is that there was no lock to clear.
+export async function unlockWorktree(worktreePath: string): Promise<void> {
+  await run(['git', 'worktree', 'unlock', worktreePath])
+}
+
 // Instantly retire a worktree: move it into the state dir's trash via a same-fs
 // rename (so the caller returns without waiting on the delete), deregister it,
 // then let a detached rm -rf finish the slow filesystem delete. False = rename
@@ -267,6 +274,10 @@ export async function trashWorktree(
   const trashDir = join(await stateDir(root), 'trash')
   await mkdir(trashDir, {recursive: true})
   const trashed = join(trashDir, `${basename(worktreePath)}-${Date.now()}`)
+  // `git worktree prune` silently skips locked worktrees, which would leave a
+  // registration pointing at the path we just moved away — still holding its
+  // branch. Clear any lock before the rename.
+  await unlockWorktree(worktreePath)
   try {
     await rename(worktreePath, trashed)
   } catch {
