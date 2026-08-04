@@ -116,7 +116,10 @@ export async function remove(
       (await branchIsSafeToDelete(branch))
     ) {
       const res = await deleteBranch(branch)
-      if (res.code === 0) printSuccess(`deleted branch ${branch}`)
+      if (res.code === 0)
+        printSuccess(
+          `deleted branch ${branch}${res.hash ? ` (was ${res.hash})` : ''}`,
+        )
       else printError(res.stderr || `could not delete branch ${branch}`)
     } else {
       printWarning(

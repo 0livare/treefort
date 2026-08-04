@@ -64,7 +64,10 @@ export async function prune(opts: {force?: boolean}) {
     // Merged into trunk ⇒ deleting the branch loses nothing.
     if (w.branch) {
       const res = await deleteBranch(w.branch)
-      if (res.code === 0) printSuccess(`deleted branch ${w.branch}`)
+      if (res.code === 0)
+        printSuccess(
+          `deleted branch ${w.branch}${res.hash ? ` (was ${res.hash})` : ''}`,
+        )
       else printError(res.stderr || `could not delete branch ${w.branch}`)
     }
     removed++

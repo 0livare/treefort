@@ -301,8 +301,14 @@ export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
   return isSquashMergedInto(branch, trunk)
 }
 
-export function deleteBranch(branch: string): Promise<RunResult> {
-  return run(['git', 'branch', '-D', branch])
+// Delete a branch, also reporting the commit it pointed at (`hash`) so the
+// user can recover it before it's garbage-collected.
+export async function deleteBranch(
+  branch: string,
+): Promise<RunResult & {hash: string | null}> {
+  const rev = await run(['git', 'rev-parse', '--short', branch])
+  const res = await run(['git', 'branch', '-D', branch])
+  return {...res, hash: rev.code === 0 ? rev.stdout : null}
 }
 
 // Fire-and-forget `rm -rf` that outlives this process, so removal returns

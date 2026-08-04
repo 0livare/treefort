@@ -179,10 +179,11 @@ test('prune removes squash-merged worktrees and keeps unmerged ones', async () =
   await git(repo, 'merge', '--squash', '-q', 'topic')
   await git(repo, 'commit', '-q', '-m', 'topic (squashed)')
 
+  const topicHash = (await git(repo, 'rev-parse', '--short', 'topic')).stdout
   const res = await wt(repo, 'prune')
   expect(res.code).toBe(0)
   expect(res.stderr).toContain('removed topic')
-  expect(res.stderr).toContain('deleted branch topic')
+  expect(res.stderr).toContain(`deleted branch topic (was ${topicHash})`)
   expect((await git(repo, 'branch', '--list', 'topic')).stdout).toBe('')
   expect((await wt(repo, '__complete', 'worktrees')).stdout).toBe('unmerged')
 })
@@ -202,8 +203,9 @@ test('rm deletes a squash-merged branch but keeps an unmerged one', async () => 
   await git(unmerged, 'add', '.')
   await git(unmerged, 'commit', '-q', '-m', 'u')
 
+  const mergedHash = (await git(repo, 'rev-parse', '--short', 'merged')).stdout
   const rmMerged = await wt(repo, 'rm', 'merged')
-  expect(rmMerged.stderr).toContain('deleted branch merged')
+  expect(rmMerged.stderr).toContain(`deleted branch merged (was ${mergedHash})`)
   expect((await git(repo, 'branch', '--list', 'merged')).stdout).toBe('')
 
   const rmUnmerged = await wt(repo, 'rm', 'unmerged')
