@@ -3,6 +3,7 @@ import {parseCliArgs} from './cli'
 import {
   add,
   cd,
+  claude,
   complete,
   exec,
   ff,
@@ -51,7 +52,10 @@ async function main() {
 
   switch (command) {
     case 'add':
-      await add(rest[0], rest[1], {force: cli.values.force})
+      // The single stdout line: where the shell wrapper should cd.
+      process.stdout.write(
+        `${await add(rest[0], rest[1], {force: cli.values.force})}\n`,
+      )
       break
     case 'rm':
     case 'remove':
@@ -74,6 +78,9 @@ async function main() {
       break
     case 'ff':
       await ff(rest[0])
+      break
+    case 'claude':
+      await claude(rest[0])
       break
     case 'help':
       help()

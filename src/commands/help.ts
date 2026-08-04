@@ -53,6 +53,10 @@ export function help() {
       `${wt} ${c('ff')} ${c('[name]')}`,
       'Fast-forward a worktree from its upstream (root if omitted)',
     ],
+    [
+      `${wt} ${c('claude')} ${c('[name]')}`,
+      'Open a Claude Code session in a worktree (picker if omitted)',
+    ],
     [`${wt} ${c('install')}`, 'Set up the shell wrapper + git excludes'],
     [
       `${wt} ${c('shell-init')} ${c('[shell]')}`,
@@ -74,6 +78,10 @@ export function help() {
       'New branch off the current worktree',
     ],
     [`${wt} ${c('add')}`, 'Move current branch into its own worktree'],
+    [
+      `${wt} ${c('claude')} ${c('feature-x')}`,
+      'Open Claude in feature-x, creating it if needed',
+    ],
     [
       `${wt} ${c('rm')} ${c('feature-x')} ${c('-k')}`,
       'Remove worktree but keep its branch',

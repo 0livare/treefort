@@ -1,5 +1,6 @@
 export * from './add'
 export * from './cd'
+export * from './claude'
 export * from './complete'
 export * from './exec'
 export * from './ff'

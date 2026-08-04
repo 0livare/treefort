@@ -24,6 +24,7 @@ export async function cd(target?: string) {
   const root = worktrees[0].path
   const current = worktrees.find((w) => w.isCurrent)?.path
 
+  let created = false
   const dest =
     target === undefined
       ? await pick(worktrees, root)
@@ -31,15 +32,21 @@ export async function cd(target?: string) {
           target,
           worktrees,
           root,
-          // No match: offer to create a worktree with that name. add() handles
-          // its own stdout/bookkeeping, so return null to bow out here.
-          onNoMatch: () => offerToCreate(target),
+          // No match: offer to create a worktree with that name.
+          onNoMatch: async () => {
+            const path = await offerToCreate(target)
+            created = path !== null
+            return path
+          },
         })
-  if (dest === null) return // picker cancelled, or create handled/declined
+  if (dest === null) return // picker cancelled, or create declined
 
-  // Remember where we were so `wt cd -` can toggle back, and bump frecency.
-  if (current && current !== dest) await setPrevious(root, current)
-  await recordAccess(root, dest)
+  // Remember where we were so `wt cd -` can toggle back, and bump frecency —
+  // unless add() just did both while creating the worktree.
+  if (!created) {
+    if (current && current !== dest) await setPrevious(root, current)
+    await recordAccess(root, dest)
+  }
   process.stdout.write(`${dest}\n`)
 }
 
@@ -123,16 +130,16 @@ export async function resolveWorktree({
 }
 
 // No worktree matched the target: ask whether to create one for it. On yes,
-// hand off to add() (which creates the branch/worktree and prints the cd path);
-// on no, we return null so cd stays put. Either way cd has nothing left to do.
-async function offerToCreate(target: string): Promise<null> {
+// hand off to add() and return the new worktree's path; on no, return null so
+// the caller stays put. Shared with `wt claude`.
+export async function offerToCreate(target: string): Promise<string | null> {
   // Without a terminal there's nobody to ask — fail like a plain no-match.
   if (!isInteractive()) {
     printError(`no worktree matching "${target}"`)
     process.exit(1)
   }
   if (await confirm(`no worktree matching "${target}" — create it?`, true)) {
-    await add(target, undefined, {})
+    return add(target, undefined, {})
   }
   return null
 }

@@ -16,10 +16,10 @@ Treefort makes worktrees effortless. **Add, switch, and remove worktrees in a si
 command and land in the right directory automatically.**
 
 ```sh
-wt add feature-x     # create it, automatically cd'd into it   --> pwd: /repo/.worktrees/feature-x
-wt root              # jump back to the root worktree          --> pwd: /repo
-wt feat              # jump back to feature-x later            --> pwd: /repo/.worktrees/feature-x
-wt rm                # gone, instantly                         --> pwd: /repo
+wt add feature-x     # create it, automatically cd'd into it   --> pwd: <repo>/.worktrees/feature-x
+wt root              # jump back to the root worktree          --> pwd: <repo>
+wt feat              # jump back to feature-x later            --> pwd: <repo>/.worktrees/feature-x
+wt rm                # gone, instantly                         --> pwd: <repo>
 ```
 
 ## Why you'll like it
@@ -32,11 +32,11 @@ No remembering where the thing lives. No manual `cd ../worktrees/foobar` annoyan
 
 ### 💅 Worktrees live inside the repo, where they belong
 
-Having worktrees live as siblings to the repo (or worse somewhere else entirely) is an organizational mess. Treefort keeps them tucked away in a `.worktrees/` directory at the root of your repo, that is automatically ignored by git.
+Having worktrees live as siblings to the repo (or worse somewhere else entirely) is an organizational mess. Treefort keeps them tucked away in a `.worktrees/` directory inside your repo, that is automatically ignored by git.
 
 > Treefort works equally well with worktrees that you've created via Claude or any other method
 
-Bare-clone layouts work too: run wt inside a bare repo and worktrees land in <bare>/.worktrees, with new branches forked from the trunk.
+Bare-clone layouts work too: run wt inside a bare repo and worktrees land in a `.worktrees/` directory there, with new branches forked from the trunk.
 
 ### 🧠 Partial + frecency navigation, like `zoxide` for worktrees
 
@@ -103,11 +103,26 @@ With no target the command runs in the root worktree, so `wt exec <command>` jus
 
 > `@`, `root`, and `-`, can be used as the name as well, resolved exactly like `wt cd`.
 
+### 🤖 Claude Code Integration
+
+Claude Code has some support for worktrees, but gets confused when you create your own.
+
+> Claude loses session history (the ability to use `/resume` or `claude --resume`) if you create worktrees anywhere other than `.claude/worktrees/` inside the repo.
+
+Treefort combats this by detecting if you're using Claude in a given repo and automatically creating worktrees under `.claude/worktrees/` instead of the default `.worktrees/`. This keeps Claude's session history intact across all worktrees.
+
+There's also a built in `wt claude` command that allows choosing a worktree to open claude in (similar to `claude --worktree` but interactive).
+
+```sh
+wt claude              # pick a worktree from a list, open Claude in it
+wt claude feature-x    # or name one — offers to create it if it doesn't exist
+```
+
 ## Installation
 
 > ### Prerequisite - Bun
+>
 > This package depends on Bun being [installed globally](https://bun.sh/docs/installation)
-
 
 ```bash
 # Create a global `wt` command
@@ -123,11 +138,11 @@ wt install
    `~/.bashrc` (detected from `$SHELL`). This defines a `wt` shell function
    that wraps the binary and performs the actual `cd`
    > A subprocess can't change its parent shell's directory, so this wrapper is required for the auto-`cd` behavior.
-2. Ensures your global git excludes file contains `.worktrees/`, so worktrees
-   are ignored in every repo. It appends to `core.excludesfile` if set,
-   otherwise to an existing `~/.config/git/ignore`, and only creates
-   `~/.gitignore_global` when neither exists.
-3. When run inside a git repo, also adds `.worktrees/` to that repo's
+2. Ensures your global git excludes file ignores treefort's `.worktrees/`
+   directories, so worktrees are ignored in every repo. It appends to
+   `core.excludesfile` if set, otherwise to an existing `~/.config/git/ignore`,
+   and only creates `~/.gitignore_global` when neither exists.
+3. When run inside a git repo, also ignores them in that repo's
    `.git/info/exclude` (local-only, never committed). Some tools — biome, for
    one — read a repo's ignore files but not the global excludes, and would
    otherwise scan the worktrees. Rerun `wt install` in each repo where you
@@ -206,10 +221,15 @@ wt prune --force
 # Use `@` to target the main worktree. Everything after `--` is the command.
 wt exec feature-x -- bun test
 wt exec @ -- git status
+
+# Open a Claude Code session inside a worktree (your shell stays where it is).
+# With no name you get the same interactive picker.
+wt claude feature-x
+wt claude
 ```
 
-Tab completion (worktree names for `rm`/`cd`/`exec`, branch names for `add`) is
-set up automatically by `wt install` for zsh and bash.
+Tab completion (worktree names for `rm`/`cd`/`exec`/`claude`, branch names for
+`add`) is set up automatically by `wt install` for zsh and bash.
 
 ### Flags
 
@@ -238,6 +258,13 @@ subprocess). Instead:
     cd "$dir"
   }
   ```
+
+Commands whose stdout belongs to something else — `exec`, `claude`, and
+`shell-init` — are passed straight through by the wrapper instead of being
+captured, so the program they run keeps the terminal.
+
+> Adding a passthrough command means the wrapper changes, so re-run
+> `wt install` (or `source` your rc file) after upgrading.
 
 ## Requirements
 

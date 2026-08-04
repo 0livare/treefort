@@ -19,11 +19,13 @@ import {
 import {printError, printInfo, printSuccess} from '../helpers'
 import {setPrevious} from '../prev'
 
+// Create a worktree (and its branch, unless it already exists), copy over env
+// files, and record it as the current/previous worktree. Returns its path.
 export async function add(
   name: string | undefined,
   startPoint: string | undefined,
   opts: {force?: boolean},
-) {
+): Promise<string> {
   const rootWorktree = await mainWorktree()
   if (!rootWorktree) {
     printError('not a git repository')
@@ -155,8 +157,9 @@ export async function add(
   // Bump frecency for the worktree we're entering.
   await recordAccess(root, path)
 
-  // The single stdout line: where the shell wrapper should cd.
-  process.stdout.write(`${path}\n`)
+  // Returned rather than printed: `wt claude` also creates worktrees, and it
+  // passes stdout through to Claude rather than to the shell wrapper.
+  return path
 }
 
 // Free the root worktree from its current branch so another worktree can take

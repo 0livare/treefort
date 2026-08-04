@@ -4,12 +4,13 @@ import {basename} from 'node:path'
 //
 // The wrapper shadows the `wt` binary and performs the shell-level cd: it
 // captures the binary's stdout (a single directory path, or nothing) and cds
-// there. `exec` and `shell-init` are passed through untouched — their stdout is
-// the command's own output / shell code, not a path to cd into. The wrapper is
-// POSIX-compatible and shared between shells; completion is per-shell.
+// there. `exec`, `claude`, and `shell-init` are passed through untouched —
+// their stdout is the command's own output / shell code, not a path to cd
+// into. The wrapper is POSIX-compatible and shared between shells; completion
+// is per-shell.
 const wrapper = `wt() {
   case "$1" in
-    exec|shell-init)
+    exec|claude|shell-init)
       command wt "$@"
       return $?
       ;;
@@ -29,7 +30,7 @@ const zshCompletion = `_wt() {
   fi
   if (( CURRENT == 3 )); then
     case "\${words[2]}" in
-      rm|remove|exec|ff)
+      rm|remove|exec|ff|claude)
         compadd -- \${(f)"$(command wt __complete worktrees 2>/dev/null)"}
         ;;
       cd)
@@ -50,7 +51,7 @@ const bashCompletion = `_wt() {
     candidates=$(command wt __complete cd 2>/dev/null)
   elif (( COMP_CWORD == 2 )); then
     case "\${COMP_WORDS[1]}" in
-      rm|remove|exec|ff) candidates=$(command wt __complete worktrees 2>/dev/null) ;;
+      rm|remove|exec|ff|claude) candidates=$(command wt __complete worktrees 2>/dev/null) ;;
       cd) candidates=$(command wt __complete cd 2>/dev/null) ;;
       add) candidates=$(command wt __complete branches 2>/dev/null) ;;
     esac

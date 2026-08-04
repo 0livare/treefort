@@ -1,5 +1,6 @@
 import {afterAll, expect, test} from 'bun:test'
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
@@ -33,10 +34,14 @@ afterAll(() => rmSync(scratch, {recursive: true, force: true}))
 
 type Result = {code: number; stdout: string; stderr: string}
 
-async function run(cmd: string[], cwd: string): Promise<Result> {
+async function run(
+  cmd: string[],
+  cwd: string,
+  env: Record<string, string | undefined> = ENV,
+): Promise<Result> {
   const proc = Bun.spawn(cmd, {
     cwd,
-    env: ENV,
+    env,
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
@@ -119,6 +124,62 @@ test('rm deregisters a locked worktree', async () => {
   const res = await wt(repo, 'rm', 'locked', '-k')
   expect(res.code).toBe(0)
   expect((await git(repo, 'worktree', 'list')).stdout).not.toContain('locked')
+})
+
+// A stub `claude` earlier on PATH than any real one, so the tests can assert
+// on the argv wt builds without launching a session.
+const stubBin = join(scratch, 'stub-bin')
+mkdirSync(stubBin, {recursive: true})
+writeFileSync(
+  join(stubBin, 'claude'),
+  '#!/bin/sh\necho "claude $*"\necho "cwd $PWD"\n',
+  {mode: 0o755},
+)
+const CLAUDE_ENV = {...ENV, PATH: `${stubBin}:${process.env.PATH}`}
+
+const wtClaude = (cwd: string, ...args: string[]) =>
+  run(['bun', MAIN, 'claude', ...args], cwd, CLAUDE_ENV)
+
+test('claude opens a managed worktree by name', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  await wt(repo, 'add', 'feat/x')
+
+  const res = await wtClaude(repo, 'feat/x')
+  expect(res.code).toBe(0)
+  // The name is passed through as-is, and Claude is run from the repo root.
+  expect(res.stdout).toContain('claude --worktree feat/x')
+  expect(res.stdout).toContain(`cwd ${repo}`)
+})
+
+test('claude warns then opens a worktree outside .claude/worktrees', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'legacy')).stdout // lands in .worktrees/
+
+  const res = await wtClaude(repo, 'legacy')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('.claude/worktrees/')
+  // Opened in place: passing the name to --worktree would create a second
+  // worktree on a different branch rather than open this one.
+  expect(res.stdout).not.toContain('--worktree')
+  expect(res.stdout).toContain(`cwd ${path}`)
+})
+
+test('claude bootstraps the layout so a new worktree is managed', async () => {
+  const repo = await makeRepo()
+  expect(existsSync(join(repo, '.claude', 'worktrees'))).toBe(false)
+
+  // Non-interactive, so the create prompt errors out — but the directory it
+  // needs must already exist by then, otherwise add() would use .worktrees/
+  // and the launch would be refused.
+  await wtClaude(repo, 'brand-new')
+  expect(existsSync(join(repo, '.claude', 'worktrees'))).toBe(true)
+
+  const res = await wt(repo, 'add', 'brand-new')
+  expect(res.stdout).toBe(join(repo, '.claude', 'worktrees', 'brand-new'))
+  expect((await wtClaude(repo, 'brand-new')).stdout).toContain(
+    'claude --worktree brand-new',
+  )
 })
 
 test('add forks from the root worktree, not the shell cwd', async () => {

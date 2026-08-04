@@ -8,7 +8,8 @@ const branchLabel = (w: Worktree) =>
 // Shared interactive worktree picker: NAME/BRANCH column headers, aligned
 // columns, "root" for the main worktree. Used by every worktree prompt so they
 // all look the same. Pass `dirty` (a set of worktree paths) to flag worktrees
-// with uncommitted changes. Returns the chosen worktree, or null on cancel/empty.
+// with uncommitted changes, or `managed` to flag the ones Claude Code can open.
+// Returns the chosen worktree, or null on cancel/empty.
 export function pickWorktree(
   worktrees: Worktree[],
   opts: {
@@ -16,6 +17,7 @@ export function pickWorktree(
     initialIndex?: number
     emptyMessage?: string
     dirty?: Set<string>
+    managed?: Set<string>
   },
 ): Promise<Worktree | null> {
   const width = Math.max(
@@ -34,8 +36,10 @@ export function pickWorktree(
     // Plain, column-aligned text; select() applies the row highlight/dim. The
     // dirty marker is safe to color since it's the last thing on the line.
     label: (w) => {
-      const row = `${worktreeName(w).padEnd(width)}   ${branchLabel(w)}`
-      return opts.dirty?.has(w.path) ? `${row} ${chalk.red('✗')}` : row
+      let row = `${worktreeName(w).padEnd(width)}   ${branchLabel(w)}`
+      if (opts.managed?.has(w.path)) row += ` ${chalk.blue('◆ claude')}`
+      if (opts.dirty?.has(w.path)) row += ` ${chalk.red('✗')}`
+      return row
     },
     emptyMessage: opts.emptyMessage ?? 'No worktrees found',
   })
