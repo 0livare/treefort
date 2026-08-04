@@ -1,6 +1,6 @@
+import {promptBranchDelete} from '../branch-delete'
 import {
   branchesMergedInto,
-  deleteBranch,
   isSquashMergedInto,
   listWorktrees,
   trashWorktree,
@@ -12,8 +12,9 @@ import {
 import {printError, printInfo, printSuccess, printWarning} from '../helpers'
 
 // Remove every linked worktree whose branch is already merged into the trunk
-// (main/master) — including squash merges — deleting the merged branch too.
-// Dirty worktrees are skipped unless --force.
+// (main/master) — including squash merges — asking before deleting each
+// merged branch (auto-deleted when there's no terminal to ask). Dirty
+// worktrees are skipped unless --force.
 export async function prune(opts: {force?: boolean}) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
@@ -61,14 +62,13 @@ export async function prune(opts: {force?: boolean}) {
       continue
     }
     printSuccess(`removed ${worktreeName(w)} (deleting in background)`)
-    // Merged into trunk ⇒ deleting the branch loses nothing.
+    // Merged into trunk ⇒ deleting the branch loses nothing; the prompt's
+    // default reflects that.
     if (w.branch) {
-      const res = await deleteBranch(w.branch)
-      if (res.code === 0)
-        printSuccess(
-          `deleted branch ${w.branch}${res.hash ? ` (was ${res.hash})` : ''}`,
-        )
-      else printError(res.stderr || `could not delete branch ${w.branch}`)
+      await promptBranchDelete(w.branch, {
+        safe: true,
+        safeReason: `merged into ${trunk}`,
+      })
     }
     removed++
     if (w.isCurrent) currentRemoved = true

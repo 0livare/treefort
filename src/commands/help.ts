@@ -92,11 +92,11 @@ export function help() {
     [`${c('-f')}, ${c('--force')}`, 'Skip the dirty-worktree / checkout guard'],
     [
       `${c('-k')}, ${c('--keep-branch')}`,
-      'Keep the branch (rm deletes it when safe)',
+      'Keep the branch (skip the delete-branch prompt)',
     ],
     [
       `${c('-D')}, ${c('--force-branch')}`,
-      'Delete the branch even if commits would be lost',
+      'Delete the branch without asking, even if commits would be lost',
     ],
     [`${c('-v')}, ${c('--version')}`, 'Print version number'],
     [`${c('-h')}, ${c('--help')}`, 'Print help information'],

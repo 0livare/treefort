@@ -77,15 +77,15 @@ wt rm         # with no args either removes the current worktree
 
 ### 🛟 Branch cleanup that won't lose your work
 
-`wt rm feature-x` removes the worktree _and_ deletes its branch, but only when that's safe; meaning the branch's commits already live on in another branch so nothing is lost. If the changes exist nowhere else, the branch is kept.
+`wt rm feature-x` removes the worktree and asks whether to delete its branch — telling you first whether that's safe, meaning the branch's commits already live on in another branch so nothing is lost. The safety check picks the prompt's default: `Y/n` when deleting is safe, `y/N` when the changes exist nowhere else. Without a terminal (scripts), the branch is deleted only when safe.
 
 > **Squash Merges** are detected by patch-equivalence against the trunk
 
-Need to override? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`) deletes it even if commits would be lost.
+Need to skip the prompt? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`) deletes it even if commits would be lost.
 
 ### 🧹 Sweep up merged work in one shot
 
-Shipped a batch of features? `wt prune` removes _every_ worktree (and corresponding branch) whose branch is already merged into `main` — true merges _and_ squash merges (GitHub's default), which ordinary `git branch --merged` can't see. Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
+Shipped a batch of features? `wt prune` removes _every_ worktree whose branch is already merged into `main` — true merges _and_ squash merges (GitHub's default), which ordinary `git branch --merged` can't see — asking before deleting each merged branch (Enter accepts, since merged means safe). Dirty worktrees are left untouched (pass `--force` to include them). One command and your `.worktrees/` is back to just the things you're still working on.
 
 ### 🌱 Turn your current branch into a worktree
 
@@ -179,24 +179,26 @@ wt @           # also equivalent
 
 # Remove a worktree. The directory is deregistered and moved out of the way
 # instantly, then deleted in the background — the command returns immediately.
-# Its branch is also deleted, but only if that's safe (its commits live on in
-# another local or remote branch); otherwise the branch is kept.
+# You're then asked whether to delete its branch; the prompt says whether
+# that's safe (its commits live on in another local or remote branch) and
+# defaults to yes only when it is.
 wt rm feature-x
 
 # Remove interactively (pick from a list)
 wt rm                     # the longhand `wt remove` works too
 
-# Remove the worktree but always keep its branch
+# Remove the worktree and keep its branch, no questions asked
 wt rm feature-x -k        # or: --keep-branch
 
-# Delete the branch even if its commits aren't anywhere else (may lose work)
+# Delete the branch without asking, even if its commits aren't anywhere else
+# (may lose work)
 wt rm feature-x -D        # or: --force-branch
 
 # Force-remove a worktree with uncommitted changes
 wt rm feature-x --force
 
-# Prune every worktree whose branch is already merged into main (deletes those
-# merged branches too). Dirty worktrees are skipped unless --force.
+# Prune every worktree whose branch is already merged into main (asks before
+# deleting each merged branch). Dirty worktrees are skipped unless --force.
 wt prune
 wt prune --force
 
@@ -211,13 +213,13 @@ set up automatically by `wt install` for zsh and bash.
 
 ### Flags
 
-| Flag                   | Description                                     |
-| ---------------------- | ----------------------------------------------- |
-| `-f`, `--force`        | Skip the dirty-worktree / checkout guard        |
-| `-k`, `--keep-branch`  | Keep the branch (`rm` deletes it when safe)     |
-| `-D`, `--force-branch` | Delete the branch even if commits would be lost |
-| `-v`, `--version`      | Print version number                            |
-| `-h`, `--help`         | Print help information                          |
+| Flag                   | Description                                                     |
+| ---------------------- | --------------------------------------------------------------- |
+| `-f`, `--force`        | Skip the dirty-worktree / checkout guard                        |
+| `-k`, `--keep-branch`  | Keep the branch (skip the delete-branch prompt)                 |
+| `-D`, `--force-branch` | Delete the branch without asking, even if commits would be lost |
+| `-v`, `--version`      | Print version number                                            |
+| `-h`, `--help`         | Print help information                                          |
 
 ## How the auto-`cd` works
 

@@ -188,7 +188,9 @@ test('prune removes squash-merged worktrees and keeps unmerged ones', async () =
   expect((await wt(repo, '__complete', 'worktrees')).stdout).toBe('unmerged')
 })
 
-test('rm deletes a squash-merged branch but keeps an unmerged one', async () => {
+// Without a TTY there's nobody to answer the delete-branch prompt, so rm
+// falls back to auto-deleting only when that's safe.
+test('rm without a TTY deletes a squash-merged branch but keeps an unmerged one', async () => {
   const repo = await makeRepo()
 
   const merged = (await wt(repo, 'add', 'merged')).stdout

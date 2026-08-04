@@ -1,8 +1,7 @@
+import {deleteBranchAndReport, promptBranchDelete} from '../branch-delete'
 import chalk from '../chalk'
 import {rank} from '../frecency'
 import {
-  branchIsSafeToDelete,
-  deleteBranch,
   isDirty,
   listWorktrees,
   trashWorktree,
@@ -84,14 +83,15 @@ export async function remove(
   const isCurrent = target.isCurrent
   const branch = target.branch
 
-  // Branch deletion. By default we delete it, but only when that's safe — i.e.
-  // its commits live on in another branch (local or remote), so nothing is
-  // lost. --keep-branch never deletes; --force-branch deletes unconditionally.
-  const branchDeleteMode: 'none' | 'safe' | 'force' = opts.keepBranch
+  // Branch deletion. By default we ask, with the safety check — do the
+  // branch's commits live on in another branch (local or remote)? — reported
+  // and picking the prompt's default. --keep-branch never deletes;
+  // --force-branch deletes unconditionally, no questions asked.
+  const branchDeleteMode: 'none' | 'prompt' | 'force' = opts.keepBranch
     ? 'none'
     : opts.forceBranch
       ? 'force'
-      : 'safe'
+      : 'prompt'
 
   // Run remaining git commands from the main root: if we're removing the
   // worktree we're standing in, our cwd is about to disappear.
@@ -104,27 +104,17 @@ export async function remove(
 
   printSuccess(`removed ${worktreeName(target)} (deleting in background)`)
 
-  // Delete the branch unless asked to keep it. In 'safe' mode we only delete
-  // when the commits survive elsewhere; --force-branch deletes regardless.
+  // Delete the branch unless asked to keep it. --force-branch deletes without
+  // asking; otherwise prompt, defaulting to yes only when deletion is safe.
   if (branchDeleteMode !== 'none') {
     if (!branch) {
       // Only worth mentioning when deletion was asked for explicitly.
       if (opts.forceBranch)
         printWarning('worktree was detached — no branch to delete')
-    } else if (
-      branchDeleteMode === 'force' ||
-      (await branchIsSafeToDelete(branch))
-    ) {
-      const res = await deleteBranch(branch)
-      if (res.code === 0)
-        printSuccess(
-          `deleted branch ${branch}${res.hash ? ` (was ${res.hash})` : ''}`,
-        )
-      else printError(res.stderr || `could not delete branch ${branch}`)
+    } else if (branchDeleteMode === 'force') {
+      await deleteBranchAndReport(branch)
     } else {
-      printWarning(
-        `kept branch ${branch} — its commits aren't in any other branch (use --force-branch to delete anyway)`,
-      )
+      await promptBranchDelete(branch)
     }
   }
 
