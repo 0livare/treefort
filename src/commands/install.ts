@@ -2,6 +2,7 @@ import {existsSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {basename, join} from 'node:path'
 import {
+  CLAUDE_WORKTREE_DIR,
   commonGitDir,
   globalExcludesFile,
   setGlobalExcludesFile,
@@ -73,28 +74,42 @@ async function installGitExcludes() {
   }
 
   const resolved = excludes.replace(/^~(?=$|\/)/, homedir())
-  await ensureExcludeLine(resolved, excludes)
+  await ensureExcludeLines(resolved, excludes)
 }
 
 // Tools like biome read a repo's .gitignore and .git/info/exclude but not the
-// global excludes file, so when run inside a repo also ignore .worktrees/
-// there. .git/info/exclude is never committed, so collaborators never see it.
+// global excludes file, so when run inside a repo also ignore the worktree
+// dirs there. .git/info/exclude is never committed, so collaborators never
+// see it.
 async function installRepoExcludes() {
   const gitDir = await commonGitDir()
   if (!gitDir) return
 
-  await ensureExcludeLine(join(gitDir, 'info', 'exclude'), '.git/info/exclude')
+  await ensureExcludeLines(join(gitDir, 'info', 'exclude'), '.git/info/exclude')
 }
 
-// Appends `.worktrees/` to the ignore file at `path` unless some line already
+// Both layouts are ignored unconditionally, since which one a repo uses can
+// change after install. Never `.claude/` itself — that directory holds
+// committed settings, commands, and skills in plenty of repos.
+async function ensureExcludeLines(path: string, displayPath: string) {
+  for (const dir of [WORKTREE_DIR, CLAUDE_WORKTREE_DIR]) {
+    await ensureExcludeLine(path, displayPath, dir)
+  }
+}
+
+// Appends `<dir>/` to the ignore file at `path` unless some line already
 // covers it.
-async function ensureExcludeLine(path: string, displayPath: string) {
+async function ensureExcludeLine(
+  path: string,
+  displayPath: string,
+  dir: string,
+) {
   const file = Bun.file(path)
   const existing = (await file.exists()) ? await file.text() : ''
   const lines = existing.split('\n').map((l) => l.trim())
 
-  const ignore = `${WORKTREE_DIR}/`
-  if (lines.includes(ignore) || lines.includes(WORKTREE_DIR)) {
+  const ignore = `${dir}/`
+  if (lines.includes(ignore) || lines.includes(dir)) {
     printInfo(`${displayPath} already ignores ${ignore}`)
     return
   }

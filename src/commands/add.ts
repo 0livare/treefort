@@ -13,8 +13,8 @@ import {
   mainWorktree,
   remotesWithBranch,
   trunkBranch,
-  WORKTREE_DIR,
   worktreeForBranch,
+  worktreesDir,
 } from '../git'
 import {printError, printInfo, printSuccess} from '../helpers'
 import {setPrevious} from '../prev'
@@ -103,7 +103,8 @@ export async function add(
     }
   }
 
-  const path = join(root, WORKTREE_DIR, branch)
+  const dir = worktreesDir(root)
+  const path = join(root, dir, branch)
 
   // If the branch is already checked out in the MAIN worktree, free it there
   // first so this worktree can take it. A branch held by some OTHER worktree is
@@ -141,7 +142,7 @@ export async function add(
     process.exit(1)
   }
 
-  printSuccess(`created ${WORKTREE_DIR}/${branch}`)
+  printSuccess(`created ${dir}/${branch}`)
   if (create && track) printSuccess(`  tracking ${base}`)
 
   // Bring over env files git won't (gitignored .env*), from the main worktree.

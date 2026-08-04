@@ -1,8 +1,35 @@
+import {existsSync} from 'node:fs'
 import {mkdir, rename} from 'node:fs/promises'
-import {basename, join, resolve} from 'node:path'
+import {basename, join, resolve, sep} from 'node:path'
 
-// Directory (under the repo root) where wt creates worktrees.
+// Directories (under the repo root) that hold worktrees. Claude Code manages
+// its own worktrees under .claude/worktrees, and only folds a worktree's
+// sessions into the repo's `claude --resume` list when it lives there — so a
+// repo that has that directory gets new worktrees there instead.
 export const WORKTREE_DIR = '.worktrees'
+export const CLAUDE_WORKTREE_DIR = '.claude/worktrees'
+
+// Both layouts are always recognized when reading; only one is written to.
+const WORKTREE_DIRS = [CLAUDE_WORKTREE_DIR, WORKTREE_DIR]
+
+// Where new worktrees go, relative to the repo root.
+export function worktreesDir(root: string): string {
+  return existsSync(join(root, CLAUDE_WORKTREE_DIR))
+    ? CLAUDE_WORKTREE_DIR
+    : WORKTREE_DIR
+}
+
+// A worktree's name as `claude --worktree` addresses it, or null when the
+// worktree doesn't live where Claude Code can find it.
+export function claudeWorktreeName(
+  root: string,
+  worktreePath: string,
+): string | null {
+  const prefix = join(root, CLAUDE_WORKTREE_DIR) + sep
+  return worktreePath.startsWith(prefix)
+    ? worktreePath.slice(prefix.length)
+    : null
+}
 
 export type Worktree = {
   path: string
@@ -83,13 +110,16 @@ export async function mainRoot(): Promise<string | null> {
 }
 
 // Display / lookup name: the main worktree is "root"; others use their path
-// relative to the worktrees dir (so `feat/x` and `fix/x` stay distinct), or
-// their dir name when they live outside it.
+// relative to whichever worktrees dir holds them (so `feat/x` and `fix/x` stay
+// distinct), or their dir name when they live outside both.
 export function worktreeName(w: Worktree): string {
   if (w.isMain) return 'root'
-  const marker = `/${WORKTREE_DIR}/`
-  const at = w.path.lastIndexOf(marker)
-  return at === -1 ? basename(w.path) : w.path.slice(at + marker.length)
+  for (const dir of WORKTREE_DIRS) {
+    const marker = `/${dir}/`
+    const at = w.path.lastIndexOf(marker)
+    if (at !== -1) return w.path.slice(at + marker.length)
+  }
+  return basename(w.path)
 }
 
 // Absolute path of the worktree the cwd is in (its top level), or null.
@@ -356,7 +386,10 @@ export async function branchNames(): Promise<string[]> {
 // Absolute path of the shared .git directory — the main repo's, even when
 // run from inside a linked worktree — or null outside a repo.
 export async function commonGitDir(cwd?: string): Promise<string | null> {
-  const {code, stdout} = await run(['git', 'rev-parse', '--git-common-dir'], cwd)
+  const {code, stdout} = await run(
+    ['git', 'rev-parse', '--git-common-dir'],
+    cwd,
+  )
   return code === 0 ? resolve(cwd ?? '.', stdout) : null
 }
 

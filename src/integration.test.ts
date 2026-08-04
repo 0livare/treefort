@@ -1,5 +1,11 @@
 import {afterAll, expect, test} from 'bun:test'
-import {mkdtempSync, realpathSync, rmSync, writeFileSync} from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
@@ -65,6 +71,41 @@ test('add creates a worktree off main and prints its path', async () => {
   expect(res.code).toBe(0)
   expect(res.stdout).toBe(join(repo, '.worktrees', 'feature'))
   expect(await tip(repo, 'feature')).toBe(await tip(repo, 'main'))
+})
+
+test('add uses .claude/worktrees when that directory exists', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+
+  const res = await wt(repo, 'add', 'feature')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe(join(repo, '.claude', 'worktrees', 'feature'))
+})
+
+test('a bare .claude directory does not move worktrees', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude'), {recursive: true})
+
+  const res = await wt(repo, 'add', 'feature')
+  expect(res.stdout).toBe(join(repo, '.worktrees', 'feature'))
+})
+
+test('both worktree layouts are recognized side by side', async () => {
+  const repo = await makeRepo()
+  const legacy = (await wt(repo, 'add', 'feat/old')).stdout
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  const managed = (await wt(repo, 'add', 'feat/new')).stdout
+
+  expect(legacy).toBe(join(repo, '.worktrees', 'feat', 'old'))
+  expect(managed).toBe(join(repo, '.claude', 'worktrees', 'feat', 'new'))
+
+  // Names stay relative to whichever dir holds them, so nesting survives the
+  // layout switch instead of collapsing to a basename.
+  const complete = await wt(repo, '__complete', 'worktrees')
+  expect(complete.stdout.split('\n').sort()).toEqual(['feat/new', 'feat/old'])
+
+  expect((await wt(repo, 'cd', 'feat/old')).stdout).toBe(legacy)
+  expect((await wt(repo, 'cd', 'feat/new')).stdout).toBe(managed)
 })
 
 test('add forks from the root worktree, not the shell cwd', async () => {
@@ -392,6 +433,9 @@ test('install is idempotent across repeated runs and repos', async () => {
   const once = async (path: string) => {
     const lines = (await Bun.file(path).text()).split('\n')
     expect(lines.filter((l) => l === '.worktrees/')).toHaveLength(1)
+    expect(lines.filter((l) => l === '.claude/worktrees/')).toHaveLength(1)
+    // Never the whole .claude dir — repos commit settings and commands there.
+    expect(lines).not.toContain('.claude/')
   }
 
   // Global files gained exactly one entry despite three runs.
