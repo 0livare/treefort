@@ -1,7 +1,8 @@
 # Treefort - git worktrees without the work 🌳
 
-<img width="562" height="246" alt="treefort live demo" src="https://github.com/user-attachments/assets/c3b50877-97e8-44fc-8b9e-720dd623b145" />
-<br/><br/>
+<p align="center">
+<img width="550" alt="treefort interactive worktree selector" src="https://github.com/user-attachments/assets/e6a45bfc-aec8-4868-af10-41ec3e505d56" />
+</p>
 
 Git worktrees let you check out multiple branches at once, each in its own directory. AI has skyrocketed the use of worktrees so that multiple agents can work simultaneously without stepping on each other's toes.
 
@@ -21,6 +22,8 @@ wt root              # jump back to the root worktree          --> pwd: <repo>
 wt feat              # jump back to feature-x later            --> pwd: <repo>/.worktrees/feature-x
 wt rm                # gone, instantly                         --> pwd: <repo>
 ```
+
+<img width="562" height="246" alt="treefort live demo" src="https://github.com/user-attachments/assets/c3b50877-97e8-44fc-8b9e-720dd623b145" />
 
 ## Why you'll like it
 
@@ -95,6 +98,8 @@ Want to create a worktree around an existing branch? No problem. Run `wt add` wi
 
 ```sh
 wt exec git pull --ff-only     # no target -> runs in the main (root) worktree
+wt ff                          # shorthand for the above
+
 wt exec feature-x -- bun test  # wk exec <other worktree> -- <command to run in other worktree>
 wt exec @ -- git fetch         # @ and root both mean the main worktree
 ```
