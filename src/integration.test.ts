@@ -87,12 +87,22 @@ test('add uses .claude/worktrees when that directory exists', async () => {
   expect(res.stdout).toBe(join(repo, '.claude', 'worktrees', 'feature'))
 })
 
-test('a bare .claude directory does not move worktrees', async () => {
+test('a bare .claude directory adopts .claude/worktrees', async () => {
   const repo = await makeRepo()
   mkdirSync(join(repo, '.claude'), {recursive: true})
 
   const res = await wt(repo, 'add', 'feature')
-  expect(res.stdout).toBe(join(repo, '.worktrees', 'feature'))
+  expect(res.stdout).toBe(join(repo, '.claude', 'worktrees', 'feature'))
+})
+
+test('a bare .claude directory leaves existing worktrees put', async () => {
+  const repo = await makeRepo()
+  const first = (await wt(repo, 'add', 'one')).stdout
+  mkdirSync(join(repo, '.claude'), {recursive: true})
+
+  const second = (await wt(repo, 'add', 'two')).stdout
+  expect(first).toBe(join(repo, '.worktrees', 'one'))
+  expect(second).toBe(join(repo, '.worktrees', 'two'))
 })
 
 test('both worktree layouts are recognized side by side', async () => {

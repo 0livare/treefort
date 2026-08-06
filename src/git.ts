@@ -7,16 +7,21 @@ import {basename, join, resolve, sep} from 'node:path'
 // sessions into the repo's `claude --resume` list when it lives there — so a
 // repo that has that directory gets new worktrees there instead.
 export const WORKTREE_DIR = '.worktrees'
-export const CLAUDE_WORKTREE_DIR = '.claude/worktrees'
+const CLAUDE_DIR = '.claude'
+export const CLAUDE_WORKTREE_DIR = `${CLAUDE_DIR}/worktrees`
 
 // Both layouts are always recognized when reading; only one is written to.
 const WORKTREE_DIRS = [CLAUDE_WORKTREE_DIR, WORKTREE_DIR]
 
-// Where new worktrees go, relative to the repo root.
-export function worktreesDir(root: string): string {
-  return existsSync(join(root, CLAUDE_WORKTREE_DIR))
-    ? CLAUDE_WORKTREE_DIR
-    : WORKTREE_DIR
+// Where new worktrees go, relative to the repo root. An existing
+// .claude/worktrees always wins, and a Claude Code repo that has no worktrees
+// yet starts out there too. Once worktrees exist elsewhere, though, the layout
+// stays put rather than splitting across two homes.
+export async function worktreesDir(root: string): Promise<string> {
+  if (existsSync(join(root, CLAUDE_WORKTREE_DIR))) return CLAUDE_WORKTREE_DIR
+  if (!existsSync(join(root, CLAUDE_DIR))) return WORKTREE_DIR
+  const worktrees = await listWorktrees()
+  return worktrees.some((w) => !w.isMain) ? WORKTREE_DIR : CLAUDE_WORKTREE_DIR
 }
 
 // A worktree's name as `claude --worktree` addresses it, or null when the

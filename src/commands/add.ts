@@ -105,7 +105,7 @@ export async function add(
     }
   }
 
-  const dir = worktreesDir(root)
+  const dir = await worktreesDir(root)
   const path = join(root, dir, branch)
 
   // If the branch is already checked out in the MAIN worktree, free it there
