@@ -20,7 +20,10 @@ import {offerToCreate, resolveWorktree} from './cd'
 // there. Worktrees outside that directory still open — just in place, with a
 // warning that their history won't be unified. Creating .claude/worktrees up
 // front is what makes `wt add` put new worktrees somewhere Claude can address.
-export async function claude(target?: string) {
+//
+// `forward` is everything the caller didn't claim as the target — Claude's own
+// flags, appended to the argv wt builds.
+export async function claude(target?: string, forward: string[] = []) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
     printError('not a git repository')
@@ -66,8 +69,10 @@ export async function claude(target?: string) {
   // against the main repo and folds its sessions into the repo's history.
   // Anything else is opened in place: passing its name to --worktree would
   // create a second worktree on a different branch rather than open this one.
-  const [command, cwd] =
+  // Forwarded flags go last so an explicit one wins over wt's own.
+  const [base, cwd]: [string[], string] =
     name === null ? [['claude'], dest] : [['claude', '--worktree', name], root]
+  const command = [...base, ...forward]
 
   // stdio is inherited: this command's stdout is Claude's, not a cd path.
   let proc: ReturnType<typeof Bun.spawn>

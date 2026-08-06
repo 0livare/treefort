@@ -4,6 +4,7 @@ import {
   add,
   cd,
   claude,
+  claudeHelp,
   complete,
   exec,
   ff,
@@ -33,6 +34,33 @@ async function main() {
       process.exit(1)
     }
     await exec(before[0], command)
+    return
+  }
+
+  // `claude` forwards its own flags to Claude, so it also bypasses parseArgs:
+  // the first bare word is the worktree, everything else goes to Claude. A `--`
+  // forwards the rest verbatim, for a session whose first bare word is Claude's
+  // (`wt claude -- -p "..."`).
+  if (raw[0] === 'claude') {
+    const args = raw.slice(1)
+    const sep = args.indexOf('--')
+    const head = sep === -1 ? args : args.slice(0, sep)
+    const tail = sep === -1 ? [] : args.slice(sep + 1)
+
+    // The one flag wt keeps for itself: `wt claude --help` explains the
+    // forwarding rules. `wt claude -- --help` reaches Claude's help.
+    if (head.includes('-h') || head.includes('--help')) {
+      claudeHelp()
+      process.exit(0)
+    }
+
+    let target: string | undefined
+    const forward: string[] = []
+    for (const arg of head) {
+      if (target === undefined && !arg.startsWith('-')) target = arg
+      else forward.push(arg)
+    }
+    await claude(target, [...forward, ...tail])
     return
   }
 
@@ -78,9 +106,6 @@ async function main() {
       break
     case 'ff':
       await ff(rest[0])
-      break
-    case 'claude':
-      await claude(rest[0])
       break
     case 'help':
       help()

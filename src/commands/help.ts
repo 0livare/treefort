@@ -19,6 +19,58 @@ function table(rows: [string, string][], col: number) {
   }
 }
 
+// `wt claude` forwards flags rather than parsing them, so -h/--help would go
+// to Claude like anything else. It's carved out to print this instead — the
+// forwarding rules are exactly what someone reaching for it wants explained.
+// `wt claude -- --help` is the way through to Claude's own help.
+export function claudeHelp() {
+  say()
+  say(
+    `${chalk.bold('Usage:')} ${wt} ${c('claude')} ${c('[name]')} ${c('[claude-flags]')}`,
+  )
+  say()
+  say('  Open a Claude Code session in a worktree, without switching to it.')
+  say('  With no name, pick one from a list. A name that has no worktree yet')
+  say('  offers to create it.')
+
+  const rules: [string, string][] = [
+    [c('[name]'), 'The first argument that does not start with a hyphen'],
+    [c('[claude-flags]'), 'Every other argument, forwarded to Claude as given'],
+    [c('--'), 'Forward everything after it verbatim, hyphen or not'],
+  ]
+
+  const examples: [string, string][] = [
+    [`${wt} ${c('claude')} ${c('feature-x')}`, 'Open Claude in feature-x'],
+    [
+      `${wt} ${c('claude')} ${c('feature-x --model opus')}`,
+      `Same, with ${c('--model opus')} passed to Claude`,
+    ],
+    [
+      `${wt} ${c('claude')} ${c('--continue feature-x')}`,
+      'Flags may come before the name',
+    ],
+    [
+      `${wt} ${c('claude')} ${c("-- -p 'run the tests'")}`,
+      'Picker, then forward the prompt verbatim',
+    ],
+    [
+      `${wt} ${c('claude')} ${c('-- --help')}`,
+      "Claude's own help, instead of this",
+    ],
+  ]
+
+  const col = Math.max(...[...rules, ...examples].map(([left]) => width(left)))
+
+  say()
+  say(chalk.bold('Arguments:'))
+  table(rules, col)
+
+  say()
+  say(chalk.bold('Examples:'))
+  table(examples, col)
+  say()
+}
+
 export function help() {
   say()
   say(pkg.description)
@@ -54,7 +106,7 @@ export function help() {
       'Fast-forward a worktree from its upstream (root if omitted)',
     ],
     [
-      `${wt} ${c('claude')} ${c('[name]')}`,
+      `${wt} ${c('claude')} ${c('[name] [claude-flags]')}`,
       'Open a Claude Code session in a worktree (picker if omitted)',
     ],
     [`${wt} ${c('install')}`, 'Set up the shell wrapper + git excludes'],
@@ -81,6 +133,10 @@ export function help() {
     [
       `${wt} ${c('claude')} ${c('feature-x')}`,
       'Open Claude in feature-x, creating it if needed',
+    ],
+    [
+      `${wt} ${c('claude')} ${c('feature-x --model opus')}`,
+      'Flags after the name are forwarded to Claude',
     ],
     [
       `${wt} ${c('rm')} ${c('feature-x')} ${c('-k')}`,

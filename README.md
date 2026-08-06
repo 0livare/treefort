@@ -119,8 +119,10 @@ Treefort combats this by detecting if you're using Claude in a given repo and au
 There's also a built in `wt claude` command that allows choosing a worktree to open claude in (similar to `claude --worktree` but interactive).
 
 ```sh
-wt claude              # pick a worktree from a list, open Claude in it
-wt claude feature-x    # or name one — offers to create it if it doesn't exist
+wt claude                            # pick a worktree from a list, open Claude in it
+wt claude feature-x                  # or name one — offers to create it if it doesn't exist
+wt claude feature-x --model opus     # open feature-x, forward --model opus
+wt claude -- -p 'run the tests'      # picker, then forward the prompt verbatim
 ```
 
 ## Installation

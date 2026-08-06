@@ -182,6 +182,50 @@ test('claude bootstraps the layout so a new worktree is managed', async () => {
   )
 })
 
+test('claude forwards flags and takes the bare word as the worktree', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  await wt(repo, 'add', 'feat/x')
+
+  // Flags either side of the name are forwarded, in order, after wt's own.
+  const res = await wtClaude(repo, '--continue', 'feat/x', '--model', 'opus')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain(
+    'claude --worktree feat/x --continue --model opus',
+  )
+})
+
+test('claude forwards everything after -- verbatim', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  await wt(repo, 'add', 'feat/x')
+
+  // Without the separator `run the tests` would be read as the worktree name.
+  const res = await wtClaude(repo, 'feat/x', '--', '-p', 'run the tests')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain('claude --worktree feat/x -p run the tests')
+})
+
+test('claude --help documents the forwarding instead of launching', async () => {
+  const repo = await makeRepo()
+
+  const res = await wtClaude(repo, '--help')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('wt claude')
+  // Human output is stderr, and nothing was launched.
+  expect(res.stdout).toBe('')
+})
+
+test('claude -- --help reaches Claude own help', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'legacy')).stdout
+
+  const res = await wtClaude(repo, 'legacy', '--', '--help')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain('claude --help')
+  expect(res.stdout).toContain(`cwd ${path}`)
+})
+
 test('add forks from the root worktree, not the shell cwd', async () => {
   const repo = await makeRepo()
   const a = (await wt(repo, 'add', 'a')).stdout
