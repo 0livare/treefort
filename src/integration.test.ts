@@ -515,6 +515,29 @@ test('help and version are subcommands', async () => {
   expect(version.stderr).toMatch(/^\d+\.\d+\.\d+$/)
 })
 
+test('status reports the current worktree and prints no cd path', async () => {
+  const repo = await makeRepo()
+  const res = await wt(repo, 'status')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe('') // stdout stays empty so the shell doesn't cd
+  expect(res.stderr).toContain('root')
+  expect(res.stderr).toContain('main')
+  expect(res.stderr).toContain('clean')
+  expect(res.stderr).toContain('1 worktree')
+})
+
+test('status shows a linked worktree and its dirty count', async () => {
+  const repo = await makeRepo()
+  await wt(repo, 'add', 'feature')
+  const dir = join(repo, '.worktrees', 'feature')
+  writeFileSync(join(dir, 'file.txt'), 'changed\n')
+  const res = await wt(dir, 'st') // alias
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('feature')
+  expect(res.stderr).toContain('1 file changed')
+  expect(res.stderr).toContain('2 worktrees')
+})
+
 test('exec runs in the root worktree and 127s on unknown commands', async () => {
   const repo = await makeRepo()
   const echo = await wt(repo, 'exec', '--', 'echo', 'hi')

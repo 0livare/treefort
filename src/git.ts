@@ -217,6 +217,45 @@ export async function isDirty(worktreePath: string): Promise<boolean> {
   return (await worktreeStatus(worktreePath)).length > 0
 }
 
+// Commits the worktree's branch is ahead/behind its configured upstream, or
+// null when there is no upstream (or HEAD is detached).
+export async function aheadBehind(
+  worktreePath: string,
+): Promise<{ahead: number; behind: number} | null> {
+  const {code, stdout} = await run(
+    ['git', 'rev-list', '--left-right', '--count', '@{upstream}...HEAD'],
+    worktreePath,
+  )
+  if (code !== 0 || !stdout) return null
+  const [behind, ahead] = stdout.split(/\s+/).map(Number)
+  if (Number.isNaN(ahead) || Number.isNaN(behind)) return null
+  return {ahead, behind}
+}
+
+// The short upstream ref the branch tracks (e.g. 'origin/main'), or null.
+export async function upstreamRef(
+  worktreePath: string,
+): Promise<string | null> {
+  const {code, stdout} = await run(
+    ['git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    worktreePath,
+  )
+  return code === 0 && stdout ? stdout : null
+}
+
+// The worktree's HEAD commit as a short hash + subject line, or null.
+export async function headCommit(
+  worktreePath: string,
+): Promise<{hash: string; subject: string} | null> {
+  const {code, stdout} = await run(
+    ['git', 'log', '-1', '--format=%h%x00%s'],
+    worktreePath,
+  )
+  if (code !== 0 || !stdout) return null
+  const [hash, subject = ''] = stdout.split('\0')
+  return {hash, subject}
+}
+
 // Detach a worktree's HEAD at its current commit, freeing its branch.
 export function detach(worktreePath: string): Promise<RunResult> {
   return run(['git', 'checkout', '--detach'], worktreePath)

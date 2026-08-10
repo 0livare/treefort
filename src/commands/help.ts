@@ -93,6 +93,10 @@ export function help() {
     [`${wt} ${c('prune')}`, 'Remove all worktrees merged into main'],
     [`${wt} ${c('list')}${chalk.dim(', ')}${c('ls')}`, 'List all worktrees'],
     [
+      `${wt} ${c('status')}${chalk.dim(', ')}${c('st')}`,
+      'Show the current worktree and its state',
+    ],
+    [
       `${wt} ${c('cd')} ${c('[name|-]')}`,
       'cd to a worktree (picker if omitted, - = previous)',
     ],

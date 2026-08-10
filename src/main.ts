@@ -14,6 +14,7 @@ import {
   prune,
   remove,
   shellInit,
+  status,
   version,
 } from './commands'
 import {printError} from './helpers'
@@ -96,6 +97,10 @@ async function main() {
     case 'list':
     case 'ls':
       await list()
+      break
+    case 'status':
+    case 'st':
+      await status()
       break
     case 'prune':
       await prune({force: cli.values.force})
