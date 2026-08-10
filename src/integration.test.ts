@@ -331,6 +331,45 @@ test('add refuses to free a dirty root worktree without --force', async () => {
   expect((await git(repo, 'branch', '--show-current')).stdout).toBe('main')
 })
 
+test('add frees a branch held by the current worktree', async () => {
+  const repo = await makeRepo()
+  const a = (await wt(repo, 'add', 'a')).stdout
+  await git(a, 'checkout', '-q', '-b', 'stolen')
+
+  const res = await wt(a, 'add', 'stolen')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe(join(repo, '.worktrees', 'stolen'))
+  expect(res.stderr).toContain('checked out a in the current worktree')
+  // The old worktree is back on the branch matching its name.
+  expect((await git(a, 'branch', '--show-current')).stdout).toBe('a')
+})
+
+test('add detaches the current worktree when its name has no branch', async () => {
+  const repo = await makeRepo()
+  const a = (await wt(repo, 'add', 'a')).stdout
+  await git(a, 'checkout', '-q', '-b', 'taken')
+  await git(a, 'branch', '-q', '-D', 'a')
+
+  const res = await wt(a, 'add', 'taken')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('detached the current worktree')
+  expect((await git(a, 'branch', '--show-current')).stdout).toBe('')
+  expect(await tip(a, 'HEAD')).toBe(await tip(repo, 'taken'))
+})
+
+test('add detaches a dirty current worktree instead of switching it', async () => {
+  const repo = await makeRepo()
+  const a = (await wt(repo, 'add', 'a')).stdout
+  await git(a, 'checkout', '-q', '-b', 'wip')
+  writeFileSync(join(a, 'dirty.txt'), 'wip\n')
+
+  const res = await wt(a, 'add', 'wip')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('detached the current worktree')
+  // The uncommitted change stays put in the old worktree.
+  expect(existsSync(join(a, 'dirty.txt'))).toBe(true)
+})
+
 test('prune removes squash-merged worktrees and keeps unmerged ones', async () => {
   const repo = await makeRepo()
   const topic = (await wt(repo, 'add', 'topic')).stdout

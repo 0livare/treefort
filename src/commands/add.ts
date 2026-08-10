@@ -13,7 +13,9 @@ import {
   mainWorktree,
   remotesWithBranch,
   trunkBranch,
+  type Worktree,
   worktreeForBranch,
+  worktreeName,
   worktreesDir,
 } from '../git'
 import {printError, printInfo, printSuccess} from '../helpers'
@@ -108,9 +110,10 @@ export async function add(
   const dir = await worktreesDir(root)
   const path = join(root, dir, branch)
 
-  // If the branch is already checked out in the MAIN worktree, free it there
-  // first so this worktree can take it. A branch held by some OTHER worktree is
-  // left alone — git will refuse and we surface that error.
+  // If the branch is already checked out in the MAIN worktree or the CURRENT
+  // one, free it there first so the new worktree can take it. A branch held by
+  // some OTHER worktree is left alone — git will refuse and we surface that
+  // error.
   if (!create) {
     const holder = await worktreeForBranch(branch)
     if (holder?.isMain) {
@@ -123,6 +126,11 @@ export async function add(
         process.exit(1)
       }
       if (!(await freeRootWorktree(holder.path))) {
+        printError(`could not free ${branch} from ${holder.path}`)
+        process.exit(1)
+      }
+    } else if (holder?.isCurrent) {
+      if (!(await freeCurrentWorktree(holder, branch, opts.force))) {
         printError(`could not free ${branch} from ${holder.path}`)
         process.exit(1)
       }
@@ -177,6 +185,36 @@ async function freeRootWorktree(rootPath: string): Promise<boolean> {
   }
   if ((await detach(rootPath)).code === 0) {
     printInfo('detached the root worktree')
+    return true
+  }
+  return false
+}
+
+// Free the current worktree from `branch` (the user switched branches inside
+// it) so a new worktree can take it: prefer switching back to the branch
+// matching the worktree's own name; fall back to a detached HEAD at the
+// current commit when no such branch exists or the switch fails. Uncommitted
+// changes go straight to the detach path (which never touches files) rather
+// than being dragged onto the name branch — unless --force opts in.
+async function freeCurrentWorktree(
+  holder: Worktree,
+  branch: string,
+  force: boolean | undefined,
+): Promise<boolean> {
+  const name = worktreeName(holder)
+  if (
+    name !== branch &&
+    (await branchExists(name)) &&
+    (force || !(await isDirty(holder.path)))
+  ) {
+    const res = await checkout(holder.path, name)
+    if (res.code === 0) {
+      printInfo(`checked out ${name} in the current worktree`)
+      return true
+    }
+  }
+  if ((await detach(holder.path)).code === 0) {
+    printInfo('detached the current worktree')
     return true
   }
   return false
