@@ -54,6 +54,22 @@ export async function recordAccess(root: string, path: string): Promise<void> {
   await save(root, pruned)
 }
 
+// Carry an entry's score over when a worktree's path changes (a rename), so a
+// moved worktree keeps its ranking instead of starting cold. No-op when the old
+// path had no entry.
+export async function renameAccess(
+  root: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  const db = await load(root)
+  const entry = db[from]
+  if (!entry) return
+  delete db[from]
+  db[to] = entry
+  await save(root, db)
+}
+
 // Sort worktrees by frecency (desc), then last access (desc), then name
 // length (asc), then name (asc). Unvisited worktrees score 0.
 export async function rank(

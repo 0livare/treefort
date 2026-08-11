@@ -219,6 +219,11 @@ wt rm feature-x -D        # or: --force-branch
 # Force-remove a worktree with uncommitted changes
 wt rm feature-x --force
 
+# Rename a worktree and its branch in one move (the directory moves too).
+wt rename feature-x feature-y
+wt rename feature-y        # one arg renames the worktree you're in
+wt mv feature-x feature-y  # `mv` is an alias
+
 # Prune every worktree whose branch is already merged into main (asks before
 # deleting each merged branch). Dirty worktrees are skipped unless --force.
 wt prune
@@ -235,8 +240,8 @@ wt claude feature-x
 wt claude
 ```
 
-Tab completion (worktree names for `rm`/`cd`/`exec`/`claude`, branch names for
-`add`) is set up automatically by `wt install` for zsh and bash.
+Tab completion (worktree names for `rm`/`rename`/`cd`/`exec`/`claude`, branch
+names for `add`) is set up automatically by `wt install` for zsh and bash.
 
 ### Flags
 

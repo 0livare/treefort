@@ -650,3 +650,93 @@ test('shell-init emits the wrapper with per-shell completion', async () => {
   expect(bash.stdout).toContain('wt() {')
   expect(bash.stdout).toContain('complete -F _wt wt')
 })
+
+test('rename moves the worktree and its branch, printing the new path when current', async () => {
+  const repo = await makeRepo()
+  const oldPath = (await wt(repo, 'add', 'feature-x')).stdout
+
+  // Run from inside the worktree so it's the current one: stdout should be the
+  // new path for the shell wrapper to follow the move.
+  const res = await wt(oldPath, 'rename', 'feature-y')
+  expect(res.code).toBe(0)
+  const newPath = join(repo, '.worktrees', 'feature-y')
+  expect(res.stdout).toBe(newPath)
+  expect(existsSync(oldPath)).toBe(false)
+  expect(existsSync(newPath)).toBe(true)
+
+  // Branch renamed in lockstep, and the registration points at the new path.
+  const branches = (await git(repo, 'branch', '--format=%(refname:short)'))
+    .stdout
+  expect(branches).toContain('feature-y')
+  expect(branches).not.toContain('feature-x')
+  expect((await git(repo, 'worktree', 'list')).stdout).toContain(newPath)
+})
+
+test('rename with two args targets a named worktree and prints nothing when not current', async () => {
+  const repo = await makeRepo()
+  await wt(repo, 'add', 'one')
+
+  const res = await wt(repo, 'rename', 'one', 'two')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe('') // not the current worktree, so no cd
+  expect(existsSync(join(repo, '.worktrees', 'one'))).toBe(false)
+  expect(existsSync(join(repo, '.worktrees', 'two'))).toBe(true)
+})
+
+test('rename refuses the root worktree and a reserved name', async () => {
+  const repo = await makeRepo()
+  await wt(repo, 'add', 'a')
+
+  const root = await wt(repo, 'rename', 'root', 'x')
+  expect(root.code).toBe(1)
+  expect(root.stderr).toContain('root')
+
+  const reserved = await wt(repo, 'rename', 'a', 'main')
+  expect(reserved.code).toBe(1)
+  expect(existsSync(join(repo, '.worktrees', 'a'))).toBe(true) // unchanged
+})
+
+test('rename refuses when the destination directory or branch is taken', async () => {
+  const repo = await makeRepo()
+  await wt(repo, 'add', 'a')
+  await wt(repo, 'add', 'b')
+  await git(repo, 'branch', 'taken')
+
+  // Destination directory already exists.
+  const dir = await wt(repo, 'rename', 'a', 'b')
+  expect(dir.code).toBe(1)
+
+  // Destination branch already exists (no worktree holds it).
+  const branch = await wt(repo, 'rename', 'a', 'taken')
+  expect(branch.code).toBe(1)
+  expect(branch.stderr).toContain('taken')
+  expect(existsSync(join(repo, '.worktrees', 'a'))).toBe(true) // unchanged
+})
+
+test('rename leaves an independently-named branch alone, moving only the directory', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'feat')).stdout
+  // Rename the branch out from under the worktree so name != branch.
+  await git(path, 'branch', '-m', 'feat', 'renamed-branch')
+
+  const res = await wt(repo, 'rename', 'feat', 'moved')
+  expect(res.code).toBe(0)
+  expect(existsSync(join(repo, '.worktrees', 'moved'))).toBe(true)
+
+  const branches = (await git(repo, 'branch', '--format=%(refname:short)'))
+    .stdout
+  expect(branches).toContain('renamed-branch')
+  expect(branches).not.toContain('moved')
+})
+
+test('rename works on a locked worktree', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'locked')).stdout
+  // Claude Code leaves worktrees locked; git worktree move refuses a locked one
+  // unless it's unlocked first.
+  await git(repo, 'worktree', 'lock', path)
+
+  const res = await wt(repo, 'rename', 'locked', 'unlocked')
+  expect(res.code).toBe(0)
+  expect(existsSync(join(repo, '.worktrees', 'unlocked'))).toBe(true)
+})

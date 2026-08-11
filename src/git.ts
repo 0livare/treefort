@@ -300,6 +300,16 @@ export async function pruneWorktrees(): Promise<void> {
   await run(['git', 'worktree', 'prune'])
 }
 
+// Move a worktree's directory, updating git's registration to match.
+export function moveWorktree(from: string, to: string): Promise<RunResult> {
+  return run(['git', 'worktree', 'move', from, to])
+}
+
+// Rename a local branch (git branch -m), carrying its config/upstream along.
+export function renameBranch(from: string, to: string): Promise<RunResult> {
+  return run(['git', 'branch', '-m', from, to])
+}
+
 // Clear a `git worktree lock`. Claude Code locks every worktree it opens and
 // leaves the lock behind after the session exits. Failure is expected and
 // ignored — the common case is that there was no lock to clear.

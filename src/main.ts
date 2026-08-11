@@ -13,6 +13,7 @@ import {
   list,
   prune,
   remove,
+  rename,
   shellInit,
   status,
   version,
@@ -101,6 +102,10 @@ async function main() {
     case 'status':
     case 'st':
       await status()
+      break
+    case 'rename':
+    case 'mv':
+      await rename(rest[0], rest[1])
       break
     case 'prune':
       await prune({force: cli.values.force})
