@@ -19,7 +19,7 @@
     "lint": "biome lint .",
     "check": "biome check --write .",
     "test": "bun test",
-    "toc": "doctoc README.md --maxlevel 3 --title '**Commands**'",
+    "toc": "doctoc README.md --notitle",
     "pr": "bun run toc && bun run types && bun run check && bun test",
     "pub": "bun run pr && bumpp && bun publish"
   },

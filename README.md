@@ -25,6 +25,48 @@ wt rm                # gone, instantly                         --> pwd: <repo>
 
 <img width="562" height="246" alt="treefort live demo" src="https://github.com/user-attachments/assets/c3b50877-97e8-44fc-8b9e-720dd623b145" />
 
+## Table of Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Why you'll like it](#why-youll-like-it)
+  - [🏃 You end up _inside_ the worktree every time](#-you-end-up-inside-the-worktree-every-time)
+  - [💅 Worktrees live inside the repo, where they belong](#-worktrees-live-inside-the-repo-where-they-belong)
+  - [🧠 Partial + frecency navigation, like `zoxide` for worktrees](#-partial--frecency-navigation-like-zoxide-for-worktrees)
+  - [🎛 An interactive picker, one keystroke away](#-an-interactive-picker-one-keystroke-away)
+  - [🌿 Your env files come along for free](#-your-env-files-come-along-for-free)
+  - [⚡ Removal returns _immediately_](#-removal-returns-immediately)
+  - [🛟 Branch cleanup that won't lose your work](#-branch-cleanup-that-wont-lose-your-work)
+  - [🧹 Sweep up merged work in one shot](#-sweep-up-merged-work-in-one-shot)
+  - [🌱 Turn your current branch into a worktree](#-turn-your-current-branch-into-a-worktree)
+  - [🔭 Reach into a worktree without leaving yours](#-reach-into-a-worktree-without-leaving-yours)
+  - [🤖 Claude Code Integration](#-claude-code-integration)
+- [Installation](#installation)
+- [Usage](#usage)
+- [How the auto-`cd` works](#how-the-auto-cd-works)
+- [Requirements](#requirements)
+- [Contributing](#contributing)
+- [Command reference](#command-reference)
+  - [wt cd](#wt-cd)
+  - [wt add](#wt-add)
+  - [wt rm](#wt-rm)
+  - [wt rename](#wt-rename)
+  - [wt prune](#wt-prune)
+  - [wt list](#wt-list)
+  - [wt status](#wt-status)
+  - [wt root](#wt-root)
+  - [wt exec](#wt-exec)
+  - [wt ff](#wt-ff)
+  - [wt claude](#wt-claude)
+  - [wt install](#wt-install)
+  - [wt shell-init](#wt-shell-init)
+  - [wt help](#wt-help)
+  - [wt version](#wt-version)
+  - [Global flags](#global-flags)
+
+<!-- END doctoc -->
+
 ## Why you'll like it
 
 ### 🏃 You end up _inside_ the worktree every time
@@ -52,7 +94,7 @@ wt cd reg # equivalent. cd is the default command when one isn't specified
 
 When a fragment matches more than one worktree, `wt` picks the one you actually mean, ranked by **frecency** (how _frequently_ and _recently_ you've visited it). The worktrees you live in float to the top; the ones you forgot about sink.
 
-### 🎛️ An interactive picker, one keystroke away
+### 🎛 An interactive picker, one keystroke away
 
 Forgot the name entirely? Just run `wt` with no arguments and pick from a list. Same for removing them.
 
@@ -64,7 +106,7 @@ wt      # pick a worktree from a list, then automatically cd into it
 
 A fresh worktree only gets what git tracks, so your gitignored `.env` files stay behind and nothing runs. `wt add` fixes that: it scans the main worktree (the root plus three levels down, skipping dotdirs and `node_modules`) and copies every `.env*` file — `.env`, `.env.local`, `.env.<mode>`, and friends — into the new worktree at the same relative path. Anything git already checked out is left untouched. No config, no flags, just a worktree that works on the first `cd`.
 
-### ⚡️ Removal returns _immediately_
+### ⚡ Removal returns _immediately_
 
 `wt rm` deregisters the worktree and moves it out of the way _instantly_, then deletes the files in the background. Your prompt comes back _**now**_ — not in 30s after `rm -rf` finishes churning through `node_modules`.
 
@@ -217,33 +259,10 @@ captured, so the program they run keeps the terminal.
 
 Bug reports and pull requests are welcome. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, the typecheck/lint/test
-gate, the project conventions, and how to regenerate the command reference
-table of contents below.
+gate, the project conventions, and how to regenerate the table of contents at
+the top of the README.
 
 ## Command reference
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Commands**
-
-- [wt cd](#wt-cd)
-- [wt add](#wt-add)
-- [wt rm](#wt-rm)
-- [wt rename](#wt-rename)
-- [wt prune](#wt-prune)
-- [wt list](#wt-list)
-- [wt status](#wt-status)
-- [wt root](#wt-root)
-- [wt exec](#wt-exec)
-- [wt ff](#wt-ff)
-- [wt claude](#wt-claude)
-- [wt install](#wt-install)
-- [wt shell-init](#wt-shell-init)
-- [wt help](#wt-help)
-- [wt version](#wt-version)
-- [Global flags](#global-flags)
-
-<!-- END doctoc -->
 
 ### wt cd
 
