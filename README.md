@@ -173,85 +173,10 @@ wt help
 #   - otherwise a new branch is created off the root worktree
 #     (even when you run this from inside another worktree)
 wt add feature-x
-
-# Base the new branch off something else
-wt add feature-x origin/main
-
-# `.` means "base it off the worktree I'm standing in"
-wt add feature-x .
-
-# No name: move your *current* branch into its own worktree.
-wt add
-
-# List all worktrees (current is marked, dirty ones flagged)
-wt list        # or: wt ls
-
-# move to a worktree by name or branch (partial with frecency — a fragment is enough)
-wt cd feature-x
-wt feature-x       # shorthand for `wt cd feature-x`
-wt                 # no args opens the interactive picker (same as `wt cd`)
-
-# move to the previous worktree, toggling back and forth (like `cd -`)
-wt cd -        # or just: wt -
-
-# cd to the root (main) worktree
-wt root
-wt cd @        # equivalent. @ is a special alias for the main worktree
-wt @           # also equivalent
-
-# Remove a worktree. The directory is deregistered and moved out of the way
-# instantly, then deleted in the background — the command returns immediately.
-# You're then asked whether to delete its branch; the prompt says whether
-# that's safe (its commits live on in another local or remote branch) and
-# defaults to yes only when it is.
-wt rm feature-x
-
-# Remove interactively (pick from a list)
-wt rm                     # the longhand `wt remove` works too
-
-# Remove the worktree and keep its branch, no questions asked
-wt rm feature-x -k        # or: --keep-branch
-
-# Delete the branch without asking, even if its commits aren't anywhere else
-# (may lose work)
-wt rm feature-x -D        # or: --force-branch
-
-# Force-remove a worktree with uncommitted changes
-wt rm feature-x --force
-
-# Rename a worktree and its branch in one move (the directory moves too).
-wt rename feature-x feature-y
-wt rename feature-y        # one arg renames the worktree you're in
-wt mv feature-x feature-y  # `mv` is an alias
-
-# Prune every worktree whose branch is already merged into main (asks before
-# deleting each merged branch). Dirty worktrees are skipped unless --force.
-wt prune
-wt prune --force
-
-# Run a command inside another worktree without switching to it.
-# Use `@` to target the main worktree. Everything after `--` is the command.
-wt exec feature-x -- bun test
-wt exec @ -- git status
-
-# Open a Claude Code session inside a worktree (your shell stays where it is).
-# With no name you get the same interactive picker.
-wt claude feature-x
-wt claude
 ```
 
-Tab completion (worktree names for `rm`/`rename`/`cd`/`exec`/`claude`, branch
-names for `add`) is set up automatically by `wt install` for zsh and bash.
-
-### Flags
-
-| Flag                   | Description                                                     |
-| ---------------------- | --------------------------------------------------------------- |
-| `-f`, `--force`        | Skip the dirty-worktree / checkout guard                        |
-| `-k`, `--keep-branch`  | Keep the branch (skip the delete-branch prompt)                 |
-| `-D`, `--force-branch` | Delete the branch without asking, even if commits would be lost |
-| `-v`, `--version`      | Print version number                                            |
-| `-h`, `--help`         | Print help information                                          |
+That's the gist. Every command, its aliases, and every flag are documented in
+the [Command reference](#command-reference) at the bottom of this README.
 
 ## How the auto-`cd` works
 
@@ -288,20 +213,285 @@ captured, so the program they run keeps the terminal.
   to port
 - macOS or Linux
 
-## Development
+## Contributing
 
-> You must have [Bun](https://bun.sh/docs/installation) installed globally.
+Bug reports and pull requests are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for local setup, the typecheck/lint/test
+gate, the project conventions, and how to regenerate the command reference
+table of contents below.
 
-Install dependencies and point the global `wt` command at your local checkout:
+## Command reference
 
-```bash
-bun install
-bun link      # makes `wt` resolve to this local checkout
-wt install    # one-time shell wrapper + global gitignore setup
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Commands**
+
+- [wt cd](#wt-cd)
+- [wt add](#wt-add)
+- [wt rm](#wt-rm)
+- [wt rename](#wt-rename)
+- [wt prune](#wt-prune)
+- [wt list](#wt-list)
+- [wt status](#wt-status)
+- [wt root](#wt-root)
+- [wt exec](#wt-exec)
+- [wt ff](#wt-ff)
+- [wt claude](#wt-claude)
+- [wt install](#wt-install)
+- [wt shell-init](#wt-shell-init)
+- [wt help](#wt-help)
+- [wt version](#wt-version)
+- [Global flags](#global-flags)
+
+<!-- END doctoc -->
+
+### wt cd
+
+Move to a worktree and land in its directory. `cd` is `wt`'s default command, so
+`wt <name>` is shorthand for `wt cd <name>` and bare `wt` opens the picker.
+
+- **Bare `wt`** (no target) opens the interactive picker, ordered by frecency
+  with the cursor on the top worktree that isn't the current one. In a repo with
+  only the root worktree it tells you to run `wt add` instead.
+- **`wt cd <name>`** resolves the target by exact name or branch first, then by
+  fuzzy partial match; when several match, the highest-**frecency** one wins
+  (how _frequently_ and _recently_ you've visited it). No match offers to create
+  a worktree with that name (interactive only).
+- **`wt cd -`** (or `wt -`) toggles back to the previous worktree, like `cd -`.
+- **`wt cd @`**, **`wt cd root`**, **`wt @`**, **`wt root`** all go to the main
+  (root) worktree.
+
+```sh
+wt cd feature-x
+wt reg             # partial match, frecency-ranked
+wt -               # previous worktree
+wt @               # root worktree
 ```
 
-Before finishing a change, run the typecheck + lint + test gate:
+### wt add
 
-```bash
-bun run pr
+Create a worktree — and its branch, unless it already exists — copy over
+gitignored env files, and `cd` into it. Usage: `wt add [name] [start-point]`.
+
+When a `name` is given, the branch is resolved in this order:
+
+- an existing **local** branch is checked out as-is (a start-point is rejected);
+- a branch that only exists **on a remote** is checked out as a local tracking
+  branch (a branch on multiple remotes errors and asks you to pick
+  `remote/branch`);
+- otherwise a **new branch** is forked off the root worktree — even when you run
+  this from inside another worktree.
+
+Extra behavior:
+
+- **`start-point`** bases a new branch off something else. `.` means "off the
+  worktree I'm standing in" (its `HEAD`). It only applies when creating a branch.
+- **No name** (`wt add`) graduates your _current_ branch into its own worktree,
+  freeing the main worktree behind you. It refuses the trunk branch
+  (`main`/`master`).
+- If the wanted branch is held by the main or current worktree, `wt` frees it
+  there first (checks out the trunk or the worktree's own name branch, else
+  detaches). Freeing a **dirty** worktree needs `-f`/`--force`.
+- Gitignored `.env*` files are copied from the main worktree into the new one
+  (bare roots have nothing to copy).
+
+```sh
+wt add feature-x               # new branch off root, cd in
+wt add feature-x origin/main   # base the new branch off origin/main
+wt add feature-x .             # base it off the current worktree's HEAD
+wt add                         # move the current branch into its own worktree
 ```
+
+### wt rm
+
+Remove a worktree. The directory is deregistered and moved out of the way
+**instantly**, then deleted in the background — the command returns immediately,
+even with a huge `node_modules`. Alias: `wt remove`.
+
+- **Target** resolves like `wt cd` (exact name/branch, then fuzzy frecency), but
+  because removal is destructive a fuzzy hit asks `y/N` first, and without a
+  terminal an exact name is required. With **no name** it removes the current
+  worktree or, from the root, opens the picker.
+- **Dirty worktrees**: on a terminal `wt` shows the pending changes and asks to
+  remove anyway; non-interactively it errors and points at `--force`. `-f`/
+  `--force` skips the guard.
+- **Branch deletion**: by default `wt` asks whether to delete the branch, with a
+  safety check — do its commits already live on in another local or remote
+  branch (squash merges are detected by patch-equivalence)? The prompt defaults
+  to yes only when deleting is safe. `-k`/`--keep-branch` never deletes;
+  `-D`/`--force-branch` deletes unconditionally.
+
+```sh
+wt rm feature-x            # remove, then asked about the branch
+wt rm                      # current worktree, or the picker at the root
+wt rm feature-x -k         # keep the branch, no questions
+wt rm feature-x -D         # delete the branch even if commits would be lost
+wt rm feature-x --force    # remove despite uncommitted changes
+```
+
+### wt rename
+
+Rename a worktree and — when the branch still carries the worktree's name —
+rename the branch in lockstep, moving the directory too. Alias: `wt mv`. Usage:
+`wt rename [old] <new>`.
+
+- **`wt rename <new>`** renames the worktree you're in; **`wt rename <old>
+  <new>`** names both ends explicitly.
+- The worktree stays in its current home (`.worktrees` or `.claude/worktrees`),
+  so a nested name like `feat/x` moves within the same tree. It refuses to
+  rename the root worktree or to a trunk name.
+- Frecency ranking and the `wt cd -` pointer follow the move, and `wt` cds along
+  when you rename the worktree you're standing in.
+
+```sh
+wt rename feature-x feature-y
+wt rename feature-y          # rename the current worktree
+wt mv feature-x feature-y
+```
+
+### wt prune
+
+Remove **every** worktree whose branch is already merged into the trunk
+(`main`/`master`) — true merges _and_ squash merges (GitHub's default), which
+plain `git branch --merged` can't see. It asks before deleting each merged
+branch (Enter accepts, since merged means nothing is lost; branches are
+auto-deleted when there's no terminal to ask). Dirty worktrees are skipped
+unless `--force`.
+
+```sh
+wt prune
+wt prune --force   # include worktrees with uncommitted changes
+```
+
+### wt list
+
+List every worktree. Alias: `wt ls`. The current worktree is marked with a bold
+`❯`, worktrees with uncommitted changes are flagged `● dirty`, and — while the
+repo holds both kinds — `◆ claude` marks the ones `wt claude` can address by
+name.
+
+```sh
+wt list
+wt ls
+```
+
+### wt status
+
+Show everything about the worktree your shell is in: its name, branch (with
+upstream and ahead/behind drift), `HEAD` commit, working-tree state (clean or
+_N_ files changed), and where it sits on disk — plus a footer placing it among
+the repo's other worktrees. A pure read; it never moves your shell. Alias:
+`wt st`.
+
+```sh
+wt status
+wt st
+```
+
+### wt root
+
+`cd` to the main (root) worktree. Equivalent to `wt cd @` / `wt @`.
+
+```sh
+wt root
+```
+
+### wt exec
+
+Run a command inside a worktree without switching to it. Usage:
+`wt exec [name --] <command>`.
+
+With no target the command runs in the **root** worktree, so `wt exec <command>`
+just works. To aim at another worktree, put its name before a `--` separator;
+everything after `--` is the command, flags and all. The target resolves exactly
+like `wt cd` (`@`/`root` = main, `-` = previous, else exact-then-fuzzy match).
+The command's exit code is forwarded.
+
+```sh
+wt exec git pull --ff-only     # runs in the root worktree
+wt exec feature-x -- bun test  # runs in feature-x
+wt exec @ -- git status        # @ is the root worktree
+```
+
+### wt ff
+
+Fast-forward a worktree's branch from its upstream (`git pull --ff-only`). With
+no target it uses the **root** worktree — a shorthand for
+`wt exec git pull --ff-only`. Any target resolves like `wt cd`. A detached
+`HEAD` (no branch to fast-forward) errors cleanly.
+
+```sh
+wt ff              # fast-forward the root worktree
+wt ff feature-x    # fast-forward another worktree in place
+```
+
+### wt claude
+
+Open a [Claude Code](https://www.anthropic.com/claude-code) session inside a
+worktree, without switching to it. Usage:
+`wt claude [name] [claude-flags]`.
+
+- **No name** opens the interactive picker; a name that has no worktree yet
+  offers to create it.
+- The first bare word is the target worktree; every other argument is forwarded
+  to Claude as given. A `--` forwards everything after it verbatim, hyphen or
+  not.
+- `wt claude --help` explains these forwarding rules; `wt claude -- --help`
+  reaches Claude's own help.
+- Worktrees under `.claude/worktrees/` are opened by name so Claude folds their
+  sessions into the repo's `claude --resume` list; anything else opens in place
+  with a warning that its history won't be unified. (This is why `wt add` puts
+  new worktrees under `.claude/worktrees/` in Claude repos.)
+
+```sh
+wt claude feature-x
+wt claude feature-x --model opus   # flags after the name go to Claude
+wt claude -- -p 'run the tests'    # picker, then forward the prompt verbatim
+```
+
+### wt install
+
+One-time, idempotent setup. It:
+
+1. Adds `eval "$(command wt shell-init <shell>)"` to your `~/.zshrc` or
+   `~/.bashrc` (detected from `$SHELL`), defining the `wt` shell function that
+   performs the auto-`cd` and enabling tab completion (worktree names for
+   `rm`/`rename`/`cd`/`exec`/`claude`, branch names for `add`).
+2. Ensures your global git excludes ignore treefort's worktree directories, so
+   worktrees are ignored in every repo.
+3. When run inside a repo, also ignores them in that repo's `.git/info/exclude`
+   (local-only, never committed) so tools like Biome don't scan them. Re-run it
+   in each repo where you want that.
+
+```sh
+wt install
+```
+
+### wt shell-init
+
+Print the shell wrapper and tab completion for
+`eval "$(command wt shell-init <shell>)"`. `shell` is `zsh` or `bash`, defaulting
+from `$SHELL` (then `zsh`). `wt install` wires this up for you; run it directly
+to port the wrapper to another shell.
+
+```sh
+wt shell-init zsh
+```
+
+### wt help
+
+Print the full command, example, and flag reference. `-h`/`--help` do the same.
+
+### wt version
+
+Print the version number. `-v`/`--version` do the same.
+
+### Global flags
+
+| Flag                   | Applies to      | Description                                                      |
+| ---------------------- | --------------- | --------------------------------------------------------------- |
+| `-f`, `--force`        | `add`, `rm`, `prune` | Skip the dirty-worktree / checkout guard                   |
+| `-k`, `--keep-branch`  | `rm`            | Keep the branch (skip the delete-branch prompt)                 |
+| `-D`, `--force-branch` | `rm`            | Delete the branch without asking, even if commits would be lost |
+| `-v`, `--version`      | —               | Print version number                                            |
+| `-h`, `--help`         | —               | Print help information                                          |
