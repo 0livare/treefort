@@ -314,6 +314,11 @@ Extra behavior:
 - Gitignored `.env*` files are copied from the main worktree into the new one
   (bare roots have nothing to copy).
 
+**Flags**
+
+- `-f`, `--force` — free the holding worktree even when it has uncommitted
+  changes (its branch is checked out somewhere dirty).
+
 ```sh
 wt add feature-x               # new branch off root, cd in
 wt add feature-x origin/main   # base the new branch off origin/main
@@ -339,6 +344,13 @@ even with a huge `node_modules`. Alias: `wt remove`.
   branch (squash merges are detected by patch-equivalence)? The prompt defaults
   to yes only when deleting is safe. `-k`/`--keep-branch` never deletes;
   `-D`/`--force-branch` deletes unconditionally.
+
+**Flags**
+
+- `-f`, `--force` — remove even with uncommitted changes (skip the dirty guard).
+- `-k`, `--keep-branch` — keep the branch (skip the delete-branch prompt).
+- `-D`, `--force-branch` — delete the branch unconditionally, even if commits
+  would be lost.
 
 ```sh
 wt rm feature-x            # remove, then asked about the branch
@@ -376,6 +388,10 @@ plain `git branch --merged` can't see. It asks before deleting each merged
 branch (Enter accepts, since merged means nothing is lost; branches are
 auto-deleted when there's no terminal to ask). Dirty worktrees are skipped
 unless `--force`.
+
+**Flags**
+
+- `-f`, `--force` — include worktrees with uncommitted changes.
 
 ```sh
 wt prune
@@ -507,10 +523,10 @@ Print the version number. `-v`/`--version` do the same.
 
 ### Global flags
 
-| Flag                   | Applies to      | Description                                                      |
-| ---------------------- | --------------- | --------------------------------------------------------------- |
-| `-f`, `--force`        | `add`, `rm`, `prune` | Skip the dirty-worktree / checkout guard                   |
-| `-k`, `--keep-branch`  | `rm`            | Keep the branch (skip the delete-branch prompt)                 |
-| `-D`, `--force-branch` | `rm`            | Delete the branch without asking, even if commits would be lost |
-| `-v`, `--version`      | —               | Print version number                                            |
-| `-h`, `--help`         | —               | Print help information                                          |
+Handled before any command runs, so they work anywhere. The flags each command
+takes are documented under that command above.
+
+| Flag              | Description              |
+| ----------------- | ------------------------ |
+| `-v`, `--version` | Print the version number |
+| `-h`, `--help`    | Print help information   |
