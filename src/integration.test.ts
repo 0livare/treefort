@@ -168,17 +168,17 @@ test('claude opens a managed worktree by name', async () => {
   expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
-test('claude warns then opens a worktree outside .claude/worktrees', async () => {
+test('claude warns then opens the root for a worktree outside .claude/worktrees', async () => {
   const repo = await makeRepo()
-  const path = (await wt(repo, 'add', 'legacy')).stdout // lands in .worktrees/
+  await wt(repo, 'add', 'legacy') // lands in .worktrees/
 
   const res = await wtClaude(repo, 'legacy')
   expect(res.code).toBe(0)
   expect(res.stderr).toContain('.claude/worktrees/')
-  // Opened in place: passing the name to --worktree would create a second
-  // worktree on a different branch rather than open this one.
+  // A legacy worktree can't be addressed by --worktree from the root, so wt
+  // opens the repo root in its place rather than passing the name through.
   expect(res.stdout).not.toContain('--worktree')
-  expect(res.stdout).toContain(`cwd ${path}`)
+  expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
 test('claude bootstraps the layout so a new worktree is managed', async () => {
@@ -234,12 +234,12 @@ test('claude --help documents the forwarding instead of launching', async () => 
 
 test('claude -- --help reaches Claude own help', async () => {
   const repo = await makeRepo()
-  const path = (await wt(repo, 'add', 'legacy')).stdout
+  await wt(repo, 'add', 'legacy')
 
   const res = await wtClaude(repo, 'legacy', '--', '--help')
   expect(res.code).toBe(0)
   expect(res.stdout).toContain('claude --help')
-  expect(res.stdout).toContain(`cwd ${path}`)
+  expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
 test('claude with no name opens the worktree you are in', async () => {
@@ -268,17 +268,17 @@ test('claude with no name shows the picker at the root worktree', async () => {
   expect(res.code).toBe(1)
 })
 
-test('claude with no name from a legacy worktree opens it in place', async () => {
+test('claude with no name from a legacy worktree opens the root', async () => {
   const repo = await makeRepo()
   const path = (await wt(repo, 'add', 'legacy')).stdout // lands in .worktrees/
 
-  // The current worktree isn't under .claude/worktrees, so it opens in place
-  // with the history-won't-be-unified warning instead of by name.
+  // The current worktree isn't under .claude/worktrees, so it can't be
+  // addressed from the root — wt warns and opens the repo root instead.
   const res = await wtClaude(path)
   expect(res.code).toBe(0)
   expect(res.stderr).toContain('.claude/worktrees/')
   expect(res.stdout).not.toContain('--worktree')
-  expect(res.stdout).toContain(`cwd ${path}`)
+  expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
 test('claude opens the root worktree in place with no unmanaged warning', async () => {

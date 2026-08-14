@@ -15,12 +15,13 @@ import {offerToCreate, resolveWorktree} from './cd'
 
 // Open a Claude Code session in a worktree, without switching to it.
 //
-// Claude addresses worktrees by name under .claude/worktrees, and only folds a
-// worktree's sessions into the repo's `claude --resume` list when it lives
-// there. Worktrees outside that directory still open — just in place, with a
-// warning that their history won't be unified (the repo root excepted: its
-// sessions already are the repo's). Creating .claude/worktrees up front is what
-// makes `wt add` put new worktrees somewhere Claude can address.
+// Claude always launches from the repo root, so every session folds into the
+// repo's `claude --resume` list. A worktree under .claude/worktrees is reopened
+// there by name (via `claude --worktree`); the root opens itself. A worktree
+// outside that directory can't be addressed from the root, so it still runs —
+// but with a warning that we're opening the repo root in its place. Creating
+// .claude/worktrees up front is what makes `wt add` put new worktrees somewhere
+// Claude can address.
 //
 // `forward` is everything the caller didn't claim as the target — Claude's own
 // flags, appended to the argv wt builds.
@@ -54,17 +55,21 @@ export async function claude(target?: string, forward: string[] = []) {
   if (dest === null) return // picker cancelled, or create declined
 
   const name = claudeWorktreeName(root, dest)
-  // The root worktree is the repo itself, so a session opened there already
-  // lives in the repo's history — only worktrees outside .claude/worktrees
-  // strand it, so those are the only ones that warrant the warning.
+  // Claude always launches from the root, where only a worktree under
+  // .claude/worktrees can be reopened by name. The root itself is fine — it's
+  // what we'd open anyway — but any other worktree can't be addressed, so warn
+  // that we'll open the repo root in its place before doing so.
   if (name === null && dest !== root) {
     const w = worktrees.find((x) => x.path === dest)
     printWarning(
-      `${w ? worktreeName(w) : dest} isn't under ${CLAUDE_WORKTREE_DIR}/ — this session's history stays in that worktree instead of joining the repo's \`claude --resume\` list`,
+      `${w ? worktreeName(w) : dest} isn't under ${CLAUDE_WORKTREE_DIR}/, so Claude can't reopen it from the root — opening the repo root instead`,
     )
     // Without a terminal there's nobody to ask, and opening is the default —
     // so only ask when we can, rather than silently bailing on scripts.
-    if (isInteractive() && !(await confirm('open Claude anyway?', true))) {
+    if (
+      isInteractive() &&
+      !(await confirm('open Claude at the root instead?', true))
+    ) {
       process.exit(0)
     }
   }
@@ -72,14 +77,13 @@ export async function claude(target?: string, forward: string[] = []) {
   // add() already recorded the access when it created the worktree.
   if (!created) await recordAccess(root, dest)
 
-  // A managed worktree is opened by name from the root, so Claude resolves it
-  // against the main repo and folds its sessions into the repo's history.
-  // Anything else is opened in place: passing its name to --worktree would
-  // create a second worktree on a different branch rather than open this one.
-  // Forwarded flags go last so an explicit one wins over wt's own.
-  const [base, cwd]: [string[], string] =
-    name === null ? [['claude'], dest] : [['claude', '--worktree', name], root]
-  return runClaude([...base, ...forward], cwd)
+  // Always launched from the repo root, so Claude resolves the session against
+  // the main repo and folds it into the repo's history. A managed worktree is
+  // still addressed by name via --worktree; the root (and any worktree that
+  // can't be addressed) just opens the root itself. Forwarded flags go last so
+  // an explicit one wins over wt's own.
+  const base = name === null ? ['claude'] : ['claude', '--worktree', name]
+  return runClaude([...base, ...forward], root)
 }
 
 // Hand off to Claude with inherited stdio — its stdout is the session's, not a

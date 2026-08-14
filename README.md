@@ -476,11 +476,12 @@ worktree, without switching to it. Usage:
   not.
 - `wt claude --help` explains these forwarding rules; `wt claude -- --help`
   reaches Claude's own help.
-- Worktrees under `.claude/worktrees/` are opened by name so Claude folds their
-  sessions into the repo's `claude --resume` list; the repo root opens in place
-  and its sessions already are the repo's. Any other worktree opens in place
-  with a warning that its history won't be unified. (This is why `wt add` puts
-  new worktrees under `.claude/worktrees/` in Claude repos.)
+- Claude is always launched from the repo root, so its sessions join the repo's
+  `claude --resume` history. A worktree under `.claude/worktrees/` is reopened
+  there by name (via `claude --worktree`); the root opens itself. Any other
+  worktree can't be addressed from the root, so `wt claude` warns and opens the
+  repo root in its place. (This is why `wt add` puts new worktrees under
+  `.claude/worktrees/` in Claude repos.)
 
 ```sh
 wt claude feature-x
