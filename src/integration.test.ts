@@ -28,6 +28,12 @@ const ENV = {
   ...process.env,
   GIT_CONFIG_GLOBAL: gitConfig,
   GIT_CONFIG_SYSTEM: '/dev/null',
+  // GIT_CONFIG_GLOBAL/SYSTEM don't cover config injected through the
+  // environment (GIT_CONFIG_COUNT + GIT_CONFIG_KEY_*), which git applies as if
+  // passed with `-c` and so outranks both files. A host that sets, say,
+  // safe.bareRepository=explicit that way would leak into every git call and
+  // break the bare-repo tests; zeroing the count drops all of it.
+  GIT_CONFIG_COUNT: '0',
 }
 
 afterAll(() => rmSync(scratch, {recursive: true, force: true}))
