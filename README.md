@@ -467,15 +467,18 @@ worktree, without switching to it. Usage:
 `wt claude [name] [claude-flags]`.
 
 - **No name** opens the worktree you're in; run from the root worktree it opens
-  the interactive picker instead. A name that has no worktree yet offers to
-  create it.
+  the interactive picker instead — which includes the root, for a session in the
+  repo itself. A name that has no worktree yet offers to create it.
+- **Outside a git repository** it just runs `claude` in the current directory,
+  forwarding any arguments — so `wt claude` is a safe drop-in for `claude`.
 - The first bare word is the target worktree; every other argument is forwarded
   to Claude as given. A `--` forwards everything after it verbatim, hyphen or
   not.
 - `wt claude --help` explains these forwarding rules; `wt claude -- --help`
   reaches Claude's own help.
 - Worktrees under `.claude/worktrees/` are opened by name so Claude folds their
-  sessions into the repo's `claude --resume` list; anything else opens in place
+  sessions into the repo's `claude --resume` list; the repo root opens in place
+  and its sessions already are the repo's. Any other worktree opens in place
   with a warning that its history won't be unified. (This is why `wt add` puts
   new worktrees under `.claude/worktrees/` in Claude repos.)
 

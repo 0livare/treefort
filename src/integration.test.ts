@@ -281,6 +281,39 @@ test('claude with no name from a legacy worktree opens it in place', async () =>
   expect(res.stdout).toContain(`cwd ${path}`)
 })
 
+test('claude opens the root worktree in place with no unmanaged warning', async () => {
+  const repo = await makeRepo()
+
+  // The root is the repo itself: it opens in place (plain `claude`, no
+  // --worktree) and never warns about stranded history.
+  const res = await wtClaude(repo, 'root')
+  expect(res.code).toBe(0)
+  expect(res.stdout).not.toContain('--worktree')
+  expect(res.stdout).toContain(`cwd ${repo}`)
+  expect(res.stderr).not.toContain("isn't under")
+})
+
+test('claude outside a git repo just runs claude in place', async () => {
+  const dir = join(scratch, 'not-a-repo')
+  mkdirSync(dir, {recursive: true})
+
+  const res = await wtClaude(dir)
+  expect(res.code).toBe(0)
+  expect(res.stderr).not.toContain('not a git repository')
+  expect(res.stdout).toContain('claude')
+  expect(res.stdout).toContain(`cwd ${dir}`)
+})
+
+test('claude outside a git repo forwards its arguments', async () => {
+  const dir = join(scratch, 'not-a-repo-forward')
+  mkdirSync(dir, {recursive: true})
+
+  const res = await wtClaude(dir, '--', '-p', 'run the tests')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain('claude -p run the tests')
+  expect(res.stdout).toContain(`cwd ${dir}`)
+})
+
 test('add forks from the root worktree, not the shell cwd', async () => {
   const repo = await makeRepo()
   const a = (await wt(repo, 'add', 'a')).stdout
