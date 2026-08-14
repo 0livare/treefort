@@ -35,9 +35,8 @@ export async function claude(target?: string, forward: string[] = []) {
 
   let created = false
   const dest =
-    target === undefined
-      ? await pick(worktrees, root)
-      : await resolveWorktree({
+    target !== undefined
+      ? await resolveWorktree({
           target,
           worktrees,
           root,
@@ -47,6 +46,7 @@ export async function claude(target?: string, forward: string[] = []) {
             return path
           },
         })
+      : await currentOrPick(worktrees, root)
   if (dest === null) return // picker cancelled, or create declined
 
   const name = claudeWorktreeName(root, dest)
@@ -88,6 +88,19 @@ export async function claude(target?: string, forward: string[] = []) {
     process.exit(127)
   }
   process.exit(await proc.exited)
+}
+
+// With no explicit target, `wt claude` acts on the worktree you're standing in:
+// run from inside a linked worktree it opens that one straight away, the same
+// "here" default the other commands lean on. Only from the root worktree —
+// where there's no single obvious choice — does it fall through to the picker.
+async function currentOrPick(
+  worktrees: Worktree[],
+  root: string,
+): Promise<string | null> {
+  const current = worktrees.find((w) => w.isCurrent)
+  if (current && !current.isMain && !current.isBare) return current.path
+  return pick(worktrees, root)
 }
 
 // Picker over the linked worktrees, ordered by frecency. Worktrees Claude can

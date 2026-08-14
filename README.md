@@ -161,10 +161,10 @@ Treefort combats this by detecting if you're using Claude in a given repo and au
 There's also a built in `wt claude` command that allows choosing a worktree to open claude in (similar to `claude --worktree` but interactive).
 
 ```sh
-wt claude                            # pick a worktree from a list, open Claude in it
+wt claude                            # open the worktree you're in, or pick from a list at the root
 wt claude feature-x                  # or name one — offers to create it if it doesn't exist
 wt claude feature-x --model opus     # open feature-x, forward --model opus
-wt claude -- -p 'run the tests'      # picker, then forward the prompt verbatim
+wt claude -- -p 'run the tests'      # no name, forward the prompt verbatim
 ```
 
 ## Installation
@@ -466,8 +466,9 @@ Open a [Claude Code](https://www.anthropic.com/claude-code) session inside a
 worktree, without switching to it. Usage:
 `wt claude [name] [claude-flags]`.
 
-- **No name** opens the interactive picker; a name that has no worktree yet
-  offers to create it.
+- **No name** opens the worktree you're in; run from the root worktree it opens
+  the interactive picker instead. A name that has no worktree yet offers to
+  create it.
 - The first bare word is the target worktree; every other argument is forwarded
   to Claude as given. A `--` forwards everything after it verbatim, hyphen or
   not.
@@ -481,7 +482,7 @@ worktree, without switching to it. Usage:
 ```sh
 wt claude feature-x
 wt claude feature-x --model opus   # flags after the name go to Claude
-wt claude -- -p 'run the tests'    # picker, then forward the prompt verbatim
+wt claude -- -p 'run the tests'    # no name, forward the prompt verbatim
 ```
 
 ### wt install

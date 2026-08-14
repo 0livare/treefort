@@ -236,6 +236,45 @@ test('claude -- --help reaches Claude own help', async () => {
   expect(res.stdout).toContain(`cwd ${path}`)
 })
 
+test('claude with no name opens the worktree you are in', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  const path = (await wt(repo, 'add', 'feat/x')).stdout
+
+  // Run from inside the worktree with no name: it opens that worktree by name
+  // from the repo root, rather than showing the picker.
+  const res = await wtClaude(path)
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain('claude --worktree feat/x')
+  expect(res.stdout).toContain(`cwd ${repo}`)
+})
+
+test('claude with no name shows the picker at the root worktree', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  await wt(repo, 'add', 'feat/x')
+
+  // From the root there's no single obvious worktree, so it falls through to
+  // the picker — which can't run without a terminal, and launches nothing.
+  const res = await wtClaude(repo)
+  expect(res.stdout).toBe('')
+  expect(res.stderr).toContain('interactive picker requires a terminal')
+  expect(res.code).toBe(1)
+})
+
+test('claude with no name from a legacy worktree opens it in place', async () => {
+  const repo = await makeRepo()
+  const path = (await wt(repo, 'add', 'legacy')).stdout // lands in .worktrees/
+
+  // The current worktree isn't under .claude/worktrees, so it opens in place
+  // with the history-won't-be-unified warning instead of by name.
+  const res = await wtClaude(path)
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('.claude/worktrees/')
+  expect(res.stdout).not.toContain('--worktree')
+  expect(res.stdout).toContain(`cwd ${path}`)
+})
+
 test('add forks from the root worktree, not the shell cwd', async () => {
   const repo = await makeRepo()
   const a = (await wt(repo, 'add', 'a')).stdout

@@ -30,8 +30,9 @@ export function claudeHelp() {
   )
   say()
   say('  Open a Claude Code session in a worktree, without switching to it.')
-  say('  With no name, pick one from a list. A name that has no worktree yet')
-  say('  offers to create it.')
+  say('  With no name, open the worktree you are in — or pick one from a list')
+  say('  when run from the root. A name that has no worktree yet offers to')
+  say('  create it.')
 
   const rules: [string, string][] = [
     [c('[name]'), 'The first argument that does not start with a hyphen'],
@@ -115,7 +116,7 @@ export function help() {
     ],
     [
       `${wt} ${c('claude')} ${c('[name] [claude-flags]')}`,
-      'Open a Claude Code session in a worktree (picker if omitted)',
+      'Open a Claude Code session in a worktree (current, or picker at root)',
     ],
     [`${wt} ${c('install')}`, 'Set up the shell wrapper + git excludes'],
     [
