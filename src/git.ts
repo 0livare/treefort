@@ -3,9 +3,9 @@ import {mkdir, rename} from 'node:fs/promises'
 import {basename, join, resolve, sep} from 'node:path'
 
 // Directories (under the repo root) that hold worktrees. Claude Code manages
-// its own worktrees under .claude/worktrees, and only folds a worktree's
-// sessions into the repo's `claude --resume` list when it lives there — so a
-// repo that has that directory gets new worktrees there instead.
+// its own worktrees under .claude/worktrees, and can only reopen a worktree
+// by name (claude --worktree) when it lives there — so a repo that has that
+// directory gets new worktrees there instead.
 export const WORKTREE_DIR = '.worktrees'
 const CLAUDE_DIR = '.claude'
 export const CLAUDE_WORKTREE_DIR = `${CLAUDE_DIR}/worktrees`

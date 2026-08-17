@@ -17,13 +17,15 @@ import {offerToCreate, resolveWorktree} from './cd'
 
 // Open a Claude Code session in a worktree, without switching to it.
 //
-// Claude always launches from the repo root, so every session folds into the
-// repo's `claude --resume` list. A worktree under .claude/worktrees is reopened
-// there by name (via `claude --worktree`); the root opens itself. A worktree
-// outside that directory can't be addressed from the root, so it still runs —
-// but with a warning that we're opening the repo root in its place. Creating
-// .claude/worktrees up front is what makes `wt add` put new worktrees somewhere
-// Claude can address.
+// Claude keys every session to the directory it runs in, so a worktree's
+// sessions live in the worktree's own project dir and never show up in the
+// root's default `claude --resume` list — `resume` below is what gathers them
+// back up. A worktree under .claude/worktrees is reopened there by name (via
+// `claude --worktree`); the root opens itself. A worktree outside that
+// directory can't be addressed from the root, so it still runs — but with a
+// warning that we're opening the repo root in its place. Creating
+// .claude/worktrees up front is what makes `wt add` put new worktrees
+// somewhere Claude can address.
 //
 // `forward` is everything the caller didn't claim as the target — Claude's own
 // flags, appended to the argv wt builds. `resume` opens wt's own session
@@ -87,11 +89,11 @@ export async function claude(
   // add() already recorded the access when it created the worktree.
   if (!created) await recordAccess(root, dest)
 
-  // Always launched from the repo root, so Claude resolves the session against
-  // the main repo and folds it into the repo's history. A managed worktree is
-  // still addressed by name via --worktree; the root (and any worktree that
-  // can't be addressed) just opens the root itself. Forwarded flags go last so
-  // an explicit one wins over wt's own.
+  // Always launched from the repo root. A managed worktree is addressed by
+  // name via --worktree; the root (and any worktree that can't be addressed)
+  // just opens the root itself. The session is still keyed to the directory
+  // it runs in — `wt claude --resume` is what finds it again later. Forwarded
+  // flags go last so an explicit one wins over wt's own.
   const base = name === null ? ['claude'] : ['claude', '--worktree', name]
   return runClaude([...base, ...forward], root)
 }
@@ -188,10 +190,10 @@ async function currentOrPick(
 }
 
 // Picker over the worktrees, ordered by frecency, the root included so a
-// session can be opened in the repo itself. Worktrees whose sessions join the
-// repo's history are marked, so the ones that would strand it stand out before
-// you pick rather than after. A bare root is left out — there's no working tree
-// there to open Claude in.
+// session can be opened in the repo itself. Worktrees Claude can reopen by
+// name are marked, so the ones that would open at the root in their place
+// stand out before you pick rather than after. A bare root is left out —
+// there's no working tree there to open Claude in.
 async function pick(
   worktrees: Worktree[],
   root: string,

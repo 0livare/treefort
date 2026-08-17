@@ -30,12 +30,9 @@ export function claudeHelp() {
   )
   say()
   say('  Open a Claude Code session in a worktree, without switching to it.')
-  say('  Claude always launches from the repo root, so sessions join the repo')
-  say(
-    '  history. With no name, open the worktree you are in — or pick one (the',
-  )
-  say('  root included) when run from the root. A name with no worktree yet')
-  say('  offers to create it. Outside a git repository it just runs Claude.')
+  say('  With no name, open the worktree you are in — or pick one (the root')
+  say('  included) when run from the root. A name with no worktree yet offers')
+  say('  to create it. Outside a git repository it just runs Claude.')
 
   const rules: [string, string][] = [
     [c('[name]'), 'The first argument that does not start with a hyphen'],

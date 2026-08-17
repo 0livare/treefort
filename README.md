@@ -152,18 +152,22 @@ With no target the command runs in the root worktree, so `wt exec <command>` jus
 
 ### 🤖 Claude Code Integration
 
-Claude Code has some support for worktrees, but gets confused when you create your own.
+Claude Code keys every session to the directory it runs in, which makes worktrees awkward:
 
-> Claude loses session history (the ability to use `/resume` or `claude --resume`) if you create worktrees anywhere other than `.claude/worktrees/` inside the repo.
+> Sessions started in a worktree are stored under that worktree's own project directory, and the `claude --resume` picker defaults to the current directory's sessions — so from the repo root, worktree sessions are invisible. Claude also can't reopen a worktree by name (`claude --worktree`) unless it lives under `.claude/worktrees/` inside the repo.
 
-Treefort combats this by detecting if you're using Claude in a given repo and automatically creating worktrees under `.claude/worktrees/` instead of the default `.worktrees/`. This keeps Claude's session history intact across all worktrees.
+Treefort helps on both fronts:
 
-There's also a built in `wt claude` command that allows choosing a worktree to open claude in (similar to `claude --worktree` but interactive).
+- It detects when you're using Claude in a repo and creates new worktrees under `.claude/worktrees/` instead of the default `.worktrees/`, so Claude can always reopen them by name (and recent Claude versions can widen the resume picker to the whole repo with `Ctrl+W`).
+- `wt claude --resume` gathers every session in the repo — the root's, every worktree's, even those whose worktree has since been removed — into one picker, and resumes your choice from the directory it ran in.
+
+There's also the `wt claude` command itself, for choosing a worktree to open Claude in (similar to `claude --worktree` but interactive).
 
 ```sh
 wt claude                            # open the worktree you're in, or pick from a list at the root
 wt claude feature-x                  # or name one — offers to create it if it doesn't exist
 wt claude feature-x --model opus     # open feature-x, forward --model opus
+wt claude --resume                   # resume any session in the repo, whichever worktree it ran in
 wt claude -- -p 'run the tests'      # no name, forward the prompt verbatim
 ```
 
@@ -476,16 +480,24 @@ worktree, without switching to it. Usage:
   not.
 - `wt claude --help` explains these forwarding rules; `wt claude -- --help`
   reaches Claude's own help.
-- Claude is always launched from the repo root, so its sessions join the repo's
-  `claude --resume` history. A worktree under `.claude/worktrees/` is reopened
-  there by name (via `claude --worktree`); the root opens itself. Any other
-  worktree can't be addressed from the root, so `wt claude` warns and opens the
-  repo root in its place. (This is why `wt add` puts new worktrees under
-  `.claude/worktrees/` in Claude repos.)
+- **`--resume` (or `-r`)** picks from every session in the repo. Claude keys
+  each session to the directory it ran in, so a worktree's sessions never
+  appear in the root's default `claude --resume` list — this flag aggregates
+  them all: the root's, every worktree's, and those of worktrees that have
+  since been removed (resumed from the root instead). A bare name scopes the
+  list to one worktree, and a lone candidate resumes immediately, no picker.
+  `wt claude -- --resume` reaches Claude's own per-directory picker.
+- Claude is always launched from the repo root. A worktree under
+  `.claude/worktrees/` is reopened there by name (via `claude --worktree`); the
+  root opens itself. Any other worktree can't be addressed from the root, so
+  `wt claude` warns and opens the repo root in its place. (This is why `wt add`
+  puts new worktrees under `.claude/worktrees/` in Claude repos.)
 
 ```sh
 wt claude feature-x
 wt claude feature-x --model opus   # flags after the name go to Claude
+wt claude --resume                 # pick from every session in the repo
+wt claude feature-x --resume       # only feature-x's sessions
 wt claude -- -p 'run the tests'    # no name, forward the prompt verbatim
 ```
 
