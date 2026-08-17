@@ -9,6 +9,7 @@ import {
 } from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {encodeProjectPath} from './claude-sessions'
 
 // End-to-end tests that drive the real CLI (bun src/main.ts) as a subprocess
 // against throwaway repos. stdin is never a TTY here, so these also pin down
@@ -312,6 +313,98 @@ test('claude outside a git repo forwards its arguments', async () => {
   expect(res.code).toBe(0)
   expect(res.stdout).toContain('claude -p run the tests')
   expect(res.stdout).toContain(`cwd ${dir}`)
+})
+
+// `wt claude --resume` reads transcripts from $CLAUDE_CONFIG_DIR/projects, so
+// each test gets an isolated config dir with fabricated sessions in the
+// project dir Claude would use for the given cwd.
+let sessionCount = 0
+function fakeSession(config: string, cwd: string, prompt: string): string {
+  const id = `session-${sessionCount++}`
+  const dir = join(config, 'projects', encodeProjectPath(cwd))
+  mkdirSync(dir, {recursive: true})
+  writeFileSync(
+    join(dir, `${id}.jsonl`),
+    `${JSON.stringify({type: 'user', cwd, message: {content: prompt}})}\n`,
+  )
+  return id
+}
+
+let configCount = 0
+function makeConfig(): string {
+  const dir = join(scratch, `claude-config-${configCount++}`)
+  mkdirSync(dir, {recursive: true})
+  return dir
+}
+
+const wtResume = (cwd: string, config: string, ...args: string[]) =>
+  run(['bun', MAIN, 'claude', ...args], cwd, {
+    ...CLAUDE_ENV,
+    CLAUDE_CONFIG_DIR: config,
+  })
+
+test('claude --resume with no sessions says so and launches nothing', async () => {
+  const repo = await makeRepo()
+
+  const res = await wtResume(repo, makeConfig(), '--resume')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('no Claude sessions')
+  expect(res.stdout).toBe('')
+})
+
+test('claude --resume resumes a lone session from its own worktree', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  const path = (await wt(repo, 'add', 'feat/x')).stdout
+  const config = makeConfig()
+  const id = fakeSession(config, path, 'fix the login bug')
+
+  // -r is the short form; the tail after -- is forwarded to Claude.
+  const res = await wtResume(repo, config, '-r', '--', '--verbose')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain(`claude --resume ${id} --verbose`)
+  expect(res.stdout).toContain(`cwd ${path}`)
+})
+
+test('claude --resume with a name scopes to that worktree', async () => {
+  const repo = await makeRepo()
+  mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
+  const path = (await wt(repo, 'add', 'feat/x')).stdout
+  const config = makeConfig()
+  fakeSession(config, repo, 'a root session')
+  const id = fakeSession(config, path, 'a worktree session')
+
+  // Unscoped, two candidates: the picker is needed, and there's no terminal.
+  const all = await wtResume(repo, config, '--resume')
+  expect(all.code).toBe(1)
+  expect(all.stderr).toContain('interactive picker requires a terminal')
+
+  // Scoped to the worktree there's only one, so it resumes straight away.
+  const res = await wtResume(repo, config, 'feat/x', '--resume')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain(`claude --resume ${id}`)
+  expect(res.stdout).toContain(`cwd ${path}`)
+
+  const none = await wtResume(repo, config, 'nope', '--resume')
+  expect(none.code).toBe(1)
+  expect(none.stderr).toContain("no Claude sessions found for 'nope'")
+})
+
+test("claude --resume opens a removed worktree's session from the root", async () => {
+  const repo = await makeRepo()
+  const config = makeConfig()
+  // The worktree is gone but its project dir outlived it; the session is
+  // still offered, resumed from the repo root instead.
+  const id = fakeSession(
+    config,
+    join(repo, '.claude', 'worktrees', 'gone'),
+    'work from a deleted worktree',
+  )
+
+  const res = await wtResume(repo, config, '--resume')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toContain(`claude --resume ${id}`)
+  expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
 test('add forks from the root worktree, not the shell cwd', async () => {

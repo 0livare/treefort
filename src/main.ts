@@ -49,20 +49,24 @@ async function main() {
     const head = sep === -1 ? args : args.slice(0, sep)
     const tail = sep === -1 ? [] : args.slice(sep + 1)
 
-    // The one flag wt keeps for itself: `wt claude --help` explains the
-    // forwarding rules. `wt claude -- --help` reaches Claude's help.
+    // Flags wt keeps for itself: `wt claude --help` explains the forwarding
+    // rules, and `wt claude --resume` opens wt's session picker — one list for
+    // the whole repo, where Claude's own is scoped to a single directory.
+    // `wt claude -- --help` / `-- --resume` reach Claude's.
     if (head.includes('-h') || head.includes('--help')) {
       claudeHelp()
       process.exit(0)
     }
+    const resume = head.includes('-r') || head.includes('--resume')
 
     let target: string | undefined
     const forward: string[] = []
     for (const arg of head) {
+      if (arg === '-r' || arg === '--resume') continue
       if (target === undefined && !arg.startsWith('-')) target = arg
       else forward.push(arg)
     }
-    await claude(target, [...forward, ...tail])
+    await claude(target, [...forward, ...tail], {resume})
     return
   }
 

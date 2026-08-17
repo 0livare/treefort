@@ -40,6 +40,10 @@ export function claudeHelp() {
   const rules: [string, string][] = [
     [c('[name]'), 'The first argument that does not start with a hyphen'],
     [c('[claude-flags]'), 'Every other argument, forwarded to Claude as given'],
+    [
+      `${c('-r')}, ${c('--resume')}`,
+      "Pick from every session in the repo (Claude's own list is per-directory)",
+    ],
     [c('--'), 'Forward everything after it verbatim, hyphen or not'],
   ]
 
@@ -52,6 +56,14 @@ export function claudeHelp() {
     [
       `${wt} ${c('claude')} ${c('--continue feature-x')}`,
       'Flags may come before the name',
+    ],
+    [
+      `${wt} ${c('claude')} ${c('--resume')}`,
+      'Resume any session in the repo, whichever worktree it ran in',
+    ],
+    [
+      `${wt} ${c('claude')} ${c('feature-x --resume')}`,
+      "Resume one of feature-x's sessions",
     ],
     [
       `${wt} ${c('claude')} ${c("-- -p 'run the tests'")}`,

@@ -1,5 +1,7 @@
 import {mkdir} from 'node:fs/promises'
 import {join} from 'node:path'
+import chalk from '../chalk'
+import {type ClaudeSession, listSessions, timeAgo} from '../claude-sessions'
 import {rank, recordAccess} from '../frecency'
 import {
   CLAUDE_WORKTREE_DIR,
@@ -9,7 +11,7 @@ import {
   worktreeName,
 } from '../git'
 import {printError, printInfo, printWarning} from '../helpers'
-import {confirm, isInteractive} from '../select'
+import {confirm, isInteractive, select} from '../select'
 import {pickWorktree} from '../worktree-picker'
 import {offerToCreate, resolveWorktree} from './cd'
 
@@ -24,17 +26,25 @@ import {offerToCreate, resolveWorktree} from './cd'
 // Claude can address.
 //
 // `forward` is everything the caller didn't claim as the target — Claude's own
-// flags, appended to the argv wt builds.
-export async function claude(target?: string, forward: string[] = []) {
+// flags, appended to the argv wt builds. `resume` opens wt's own session
+// picker (aggregated across the whole repo) instead of launching a session.
+export async function claude(
+  target?: string,
+  forward: string[] = [],
+  opts: {resume?: boolean} = {},
+) {
   const worktrees = await listWorktrees()
   // Outside a git repo there's no worktree to address, so behave like a plain
   // `claude` in the current directory — forwarding whatever was passed, the
   // bare word wt would otherwise treat as a worktree name included.
   if (worktrees.length === 0) {
     const args = target === undefined ? forward : [target, ...forward]
+    if (opts.resume) args.unshift('--resume')
     return runClaude(['claude', ...args], process.cwd())
   }
   const root = worktrees[0].path
+
+  if (opts.resume) return resume(root, worktrees, target, forward)
 
   await mkdir(join(root, CLAUDE_WORKTREE_DIR), {recursive: true})
 
@@ -102,6 +112,66 @@ async function runClaude(command: string[], cwd: string): Promise<never> {
     process.exit(127)
   }
   process.exit(await proc.exited)
+}
+
+// `wt claude --resume`: pick from every session the repo has, regardless of
+// worktree. Claude keys sessions by the directory they ran in and its own
+// picker defaults to that one directory's list, so worktree sessions are
+// invisible from the root; this aggregates them all. The chosen session is
+// resumed from its own directory (so it behaves exactly like a local
+// `claude --resume` there) — or from the root when that directory is gone,
+// which newer Claude versions resolve across projects.
+async function resume(
+  root: string,
+  worktrees: Worktree[],
+  target: string | undefined,
+  forward: string[],
+): Promise<void> {
+  let sessions = await listSessions(root, worktrees)
+  if (sessions.length === 0) {
+    printInfo('no Claude sessions found for this repo')
+    return
+  }
+  // A bare word alongside --resume scopes the list to that worktree.
+  if (target !== undefined) {
+    sessions = sessions.filter((s) => s.name === target)
+    if (sessions.length === 0) {
+      printError(`no Claude sessions found for '${target}'`)
+      process.exit(1)
+    }
+  }
+  // One candidate needs no picker — resume it straight away, which also lets
+  // scripts resume a worktree's only session without a terminal.
+  const chosen =
+    sessions.length === 1 ? sessions[0] : await pickSession(sessions)
+  if (chosen === null) return
+  return runClaude(
+    ['claude', '--resume', chosen.id, ...forward],
+    chosen.exists ? chosen.cwd : root,
+  )
+}
+
+async function pickSession(
+  sessions: ClaudeSession[],
+): Promise<ClaudeSession | null> {
+  const width = Math.max(
+    ...sessions.map((s) => s.name.length),
+    'WORKTREE'.length,
+  )
+  const ages = new Map(sessions.map((s) => [s.id, timeAgo(s.mtimeMs)]))
+  const ageWidth = Math.max(...[...ages.values()].map((a) => a.length), 3)
+  return select<ClaudeSession>({
+    items: sessions,
+    header: [
+      chalk.bold('  Resume Claude session'),
+      '',
+      chalk.dim(
+        `     ${'WORKTREE'.padEnd(width)}   ${'AGE'.padEnd(ageWidth)}   TITLE`,
+      ),
+    ],
+    label: (s) =>
+      `${s.name.padEnd(width)}   ${(ages.get(s.id) ?? '').padEnd(ageWidth)}   ${s.title}`,
+  })
 }
 
 // With no explicit target, `wt claude` acts on the worktree you're standing in:
