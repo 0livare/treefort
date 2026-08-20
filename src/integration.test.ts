@@ -420,6 +420,19 @@ test('add forks from the root worktree, not the shell cwd', async () => {
   expect(await tip(repo, 'b')).not.toBe(await tip(repo, 'a'))
 })
 
+test('add with . forks from the current worktree, not the root', async () => {
+  const repo = await makeRepo()
+  const a = (await wt(repo, 'add', 'a')).stdout
+  writeFileSync(join(a, 'extra.txt'), 'x\n')
+  await git(a, 'add', '.')
+  await git(a, 'commit', '-q', '-m', 'extra')
+
+  const res = await wt(a, 'add', 'b', '.') // '.' == the current worktree's HEAD
+  expect(res.code).toBe(0)
+  expect(await tip(repo, 'b')).toBe(await tip(repo, 'a'))
+  expect(await tip(repo, 'b')).not.toBe(await tip(repo, 'main'))
+})
+
 test('slash-named worktrees keep distinct names', async () => {
   const repo = await makeRepo()
   await wt(repo, 'add', 'feat/x')
