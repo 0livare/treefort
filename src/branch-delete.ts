@@ -22,7 +22,7 @@ export async function deleteBranchAndReport(branch: string): Promise<void> {
 // `safeReason` to skip the re-check and explain why.
 export async function promptBranchDelete(
   branch: string,
-  opts: {safe?: boolean; safeReason?: string} = {},
+  opts: {safe?: boolean; safeReason?: string; defaultYes?: boolean} = {},
 ): Promise<void> {
   const safe = opts.safe ?? (await branchIsSafeToDelete(branch))
 
@@ -43,7 +43,7 @@ export async function promptBranchDelete(
     )
   else printWarning(`branch ${branch} has commits that exist nowhere else`)
 
-  if (await confirm(`delete branch ${branch}?`, safe))
+  if (await confirm(`delete branch ${branch}?`, opts.defaultYes ?? safe))
     await deleteBranchAndReport(branch)
   else printInfo(`kept branch ${branch}`)
 }

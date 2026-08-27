@@ -2,6 +2,7 @@ import {deleteBranchAndReport, promptBranchDelete} from '../branch-delete'
 import chalk from '../chalk'
 import {rank} from '../frecency'
 import {
+  branchExists,
   isDirty,
   listWorktrees,
   trashWorktree,
@@ -9,7 +10,13 @@ import {
   worktreeName,
   worktreeStatus,
 } from '../git'
-import {printError, printSuccess, printWarning, say} from '../helpers'
+import {
+  printError,
+  printInfo,
+  printSuccess,
+  printWarning,
+  say,
+} from '../helpers'
 import {matchesQuery} from '../match'
 import {confirm, isInteractive} from '../select'
 import {pickWorktree} from '../worktree-picker'
@@ -26,6 +33,32 @@ export async function remove(
 
   const root = worktrees[0].path
   const removable = worktrees.filter((w) => !w.isMain)
+  const matchingWorktree =
+    name != null &&
+    worktrees.some((w) => worktreeName(w) === name || w.branch === name)
+
+  if (name && !matchingWorktree && (await branchExists(name))) {
+    printWarning(`no worktree matching "${name}"`)
+
+    if (opts.keepBranch) {
+      printInfo(`kept branch ${name}`)
+      return
+    }
+    if (opts.forceBranch) {
+      await deleteBranchAndReport(name)
+      return
+    }
+    if (!isInteractive()) {
+      printError(
+        `deleting branch ${name} requires a terminal — use --force-branch to delete without prompting`,
+      )
+      process.exit(1)
+    }
+
+    await promptBranchDelete(name, {defaultYes: true})
+    return
+  }
+
   if (removable.length === 0) {
     printWarning('no worktrees to remove')
     process.exit(0)

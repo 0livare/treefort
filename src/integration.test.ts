@@ -607,6 +607,22 @@ test('rm without a TTY deletes a squash-merged branch but keeps an unmerged one'
   expect((await git(repo, 'branch', '--list', 'unmerged')).stdout).not.toBe('')
 })
 
+test('rm recognizes a branch with no matching worktree', async () => {
+  const repo = await makeRepo()
+  await git(repo, 'branch', 'stale')
+
+  const prompted = await wt(repo, 'rm', 'stale')
+  expect(prompted.code).toBe(1)
+  expect(prompted.stderr).toContain('no worktree matching "stale"')
+  expect(prompted.stderr).toContain('requires a terminal')
+  expect((await git(repo, 'branch', '--list', 'stale')).stdout).not.toBe('')
+
+  const forced = await wt(repo, 'rm', 'stale', '--force-branch')
+  expect(forced.code).toBe(0)
+  expect(forced.stderr).toContain('deleted branch stale')
+  expect((await git(repo, 'branch', '--list', 'stale')).stdout).toBe('')
+})
+
 test('rm on a dirty worktree errors without a TTY, lists changes, and --force removes it', async () => {
   const repo = await makeRepo()
   const feature = (await wt(repo, 'add', 'feature')).stdout
