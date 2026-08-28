@@ -127,6 +127,10 @@ export function help() {
       'Fast-forward a worktree from its upstream (root if omitted)',
     ],
     [
+      `${wt} ${c('detatch')} ${c('<name>')}`,
+      'Detach a worktree at its current commit',
+    ],
+    [
       `${wt} ${c('claude')} ${c('[name] [claude-flags]')}`,
       'Open a Claude Code session in a worktree (current, or picker at root)',
     ],

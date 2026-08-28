@@ -6,6 +6,7 @@ import {
   claude,
   claudeHelp,
   complete,
+  detatch,
   exec,
   ff,
   help,
@@ -120,6 +121,9 @@ async function main() {
       break
     case 'ff':
       await ff(rest[0])
+      break
+    case 'detatch':
+      await detatch(rest[0])
       break
     case 'help':
       help()

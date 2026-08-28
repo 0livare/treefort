@@ -801,6 +801,40 @@ test('ff errors when the branch has no upstream', async () => {
   expect(res.stderr).toMatch(/tracking|upstream/i)
 })
 
+test('detatch detaches a worktree at its current commit by name', async () => {
+  const repo = await makeRepo()
+  const feature = (await wt(repo, 'add', 'feature')).stdout
+  writeFileSync(join(feature, 'feature.txt'), 'feature\n')
+  await git(feature, 'add', '.')
+  await git(feature, 'commit', '-q', '-m', 'feature work')
+  const before = await tip(feature, 'HEAD')
+
+  const res = await wt(repo, 'detatch', 'feature')
+
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe('')
+  expect(res.stderr).toContain(`detached feature at ${before.slice(0, 7)}`)
+  expect(await tip(feature, 'HEAD')).toBe(before)
+  expect(
+    (await git(feature, 'symbolic-ref', '-q', '--short', 'HEAD')).code,
+  ).toBe(1)
+})
+
+test('detatch resolves a worktree by its checked-out branch', async () => {
+  const repo = await makeRepo()
+  const feature = (await wt(repo, 'add', 'worktree-name')).stdout
+  await git(feature, 'branch', '-m', 'branch-name')
+  const before = await tip(feature, 'HEAD')
+
+  const res = await wt(repo, 'detatch', 'branch-name')
+
+  expect(res.code).toBe(0)
+  expect(await tip(feature, 'HEAD')).toBe(before)
+  expect(
+    (await git(feature, 'symbolic-ref', '-q', '--short', 'HEAD')).code,
+  ).toBe(1)
+})
+
 test('install is idempotent across repeated runs and repos', async () => {
   // Fully isolated home so nothing leaks into the host machine or other tests.
   const home = join(scratch, 'install-home')

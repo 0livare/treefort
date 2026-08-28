@@ -58,6 +58,7 @@ wt rm                # gone, instantly                         --> pwd: <repo>
   - [wt root](#wt-root)
   - [wt exec](#wt-exec)
   - [wt ff](#wt-ff)
+  - [wt detatch](#wt-detatch)
   - [wt claude](#wt-claude)
   - [wt install](#wt-install)
   - [wt shell-init](#wt-shell-init)
@@ -462,6 +463,16 @@ no target it uses the **root** worktree — a shorthand for
 ```sh
 wt ff              # fast-forward the root worktree
 wt ff feature-x    # fast-forward another worktree in place
+```
+
+### wt detatch
+
+Detach a worktree's `HEAD` at the commit it currently points to, freeing its
+branch without changing the worktree's files. The required target may be the
+worktree name or its checked-out branch.
+
+```sh
+wt detatch feature-x
 ```
 
 ### wt claude
