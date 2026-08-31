@@ -50,9 +50,9 @@ export async function cd(target?: string) {
   process.stdout.write(`${dest}\n`)
 }
 
-// Interactive picker, ordered by frecency with the cursor on the top entry that
-// isn't the current worktree. A bare root isn't offered (nothing to work in
-// there). Returns the chosen path, or null if cancelled.
+// Interactive picker, ordered by frecency with the cursor on the current
+// worktree. A bare root isn't offered (nothing to work in there). Returns the
+// chosen path, or null if cancelled.
 async function pick(
   worktrees: Worktree[],
   root: string,
@@ -65,12 +65,16 @@ async function pick(
     return null
   }
   const ordered = await rank(root, pickable)
-  const firstOther = ordered.findIndex((w) => !w.isCurrent)
   const chosen = await pickWorktree(ordered, {
     title: 'Switch to worktree',
-    initialIndex: firstOther >= 0 ? firstOther : 0,
+    initialIndex: currentWorktreeIndex(ordered),
   })
   return chosen?.path ?? null
+}
+
+export function currentWorktreeIndex(worktrees: Worktree[]): number {
+  const currentIndex = worktrees.findIndex((w) => w.isCurrent)
+  return currentIndex >= 0 ? currentIndex : 0
 }
 
 type ResolveOpts = {
