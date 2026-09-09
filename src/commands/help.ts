@@ -151,7 +151,7 @@ export function help() {
       'New branch off origin/main',
     ],
     [
-      `${wt} ${c('add')} ${c('feature-x .')}`,
+      `${wt} ${c('add')} ${c('feature-x head')}`,
       'New branch off the current worktree',
     ],
     [`${wt} ${c('add')}`, 'Move current branch into its own worktree'],

@@ -308,8 +308,9 @@ When a `name` is given, the branch is resolved in this order:
 
 Extra behavior:
 
-- **`start-point`** bases a new branch off something else. `.` means "off the
-  worktree I'm standing in" (its `HEAD`). It only applies when creating a branch.
+- **`start-point`** bases a new branch off something else. `head` (or `.`) means
+  "off the worktree I'm standing in" (its `HEAD`). It only applies when creating
+  a branch.
 - **No name** (`wt add`) graduates your _current_ branch into its own worktree,
   freeing the main worktree behind you. It refuses the trunk branch
   (`main`/`master`).
@@ -327,7 +328,7 @@ Extra behavior:
 ```sh
 wt add feature-x               # new branch off root, cd in
 wt add feature-x origin/main   # base the new branch off origin/main
-wt add feature-x .             # base it off the current worktree's HEAD
+wt add feature-x head          # base it off the current worktree's HEAD
 wt add                         # move the current branch into its own worktree
 ```
 

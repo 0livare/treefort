@@ -10,7 +10,7 @@ import {
   currentWorktree,
   detach,
   isDirty,
-  mainWorktree,
+  listWorktrees,
   remotesWithBranch,
   trunkBranch,
   type Worktree,
@@ -28,7 +28,8 @@ export async function add(
   startPoint: string | undefined,
   opts: {force?: boolean},
 ): Promise<string> {
-  const rootWorktree = await mainWorktree()
+  const worktrees = await listWorktrees()
+  const rootWorktree = worktrees[0]
   if (!rootWorktree) {
     printError('not a git repository')
     process.exit(1)
@@ -74,14 +75,21 @@ export async function add(
     process.exit(1)
   }
 
-  // Base for a new branch: '.' opts in to the current worktree's HEAD (git has
-  // no native syntax for this); with no start-point, always fork off wherever
-  // the root worktree is — never whichever worktree the shell happens to be in.
-  // A bare root has no checkout to fork from, so use the trunk branch.
+  // Base for a new branch: '.' or 'head' opts in to the invoking worktree's
+  // HEAD. Resolve it to the commit now rather than passing HEAD through to a
+  // later git command, so its meaning cannot shift if a worktree is freed.
+  // With no start-point, always fork off wherever the root worktree is — never
+  // whichever worktree the shell happens to be in. A bare root has no checkout
+  // to fork from, so use the trunk branch.
   let base = startPoint
   let track = false
-  if (base === '.') base = 'HEAD'
-  else if (!base && create) {
+  if (base === '.' || base?.toLowerCase() === 'head') {
+    base = worktrees.find((worktree) => worktree.isCurrent)?.head
+    if (!base) {
+      printError('could not determine the current worktree HEAD')
+      process.exit(1)
+    }
+  } else if (!base && create) {
     // A branch that lives only on a remote should be picked up from there —
     // not shadowed by a fresh same-named branch forked off the root.
     const remotes = await remotesWithBranch(branch)
