@@ -5,7 +5,7 @@ import {printError, printInfo} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
 import {confirm, isInteractive} from '../select'
-import {pickWorktree} from '../worktree-picker'
+import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
 import {add} from './add'
 
 // The one worktree-navigation path. With a target, resolve it (`-` = previous,
@@ -50,8 +50,8 @@ export async function cd(target?: string) {
   process.stdout.write(`${dest}\n`)
 }
 
-// Interactive picker, ordered by frecency with the cursor on the current
-// worktree. A bare root isn't offered (nothing to work in there). Returns the
+// Interactive picker, with the current worktree first and the rest ordered by
+// frecency. A bare root isn't offered (nothing to work in there). Returns the
 // chosen path, or null if cancelled.
 async function pick(
   worktrees: Worktree[],
@@ -64,17 +64,11 @@ async function pick(
     printInfo('no other worktrees — run `wt add <name>` to create one')
     return null
   }
-  const ordered = await rank(root, pickable)
-  const chosen = await pickWorktree(ordered, {
+  const ranked = await rank(root, pickable)
+  const chosen = await pickWorktree(currentWorktreeFirst(ranked), {
     title: 'Switch to worktree',
-    initialIndex: currentWorktreeIndex(ordered),
   })
   return chosen?.path ?? null
-}
-
-export function currentWorktreeIndex(worktrees: Worktree[]): number {
-  const currentIndex = worktrees.findIndex((w) => w.isCurrent)
-  return currentIndex >= 0 ? currentIndex : 0
 }
 
 type ResolveOpts = {

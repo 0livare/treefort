@@ -19,7 +19,7 @@ import {
 } from '../helpers'
 import {matchesQuery} from '../match'
 import {confirm, isInteractive} from '../select'
-import {pickWorktree} from '../worktree-picker'
+import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
 
 export async function remove(
   name: string | undefined,
@@ -75,11 +75,9 @@ export async function remove(
         if (await isDirty(w.path)) dirty.add(w.path)
       }),
     )
-    // Default the cursor to the worktree you're in, so Enter removes it.
-    const currentIndex = removable.findIndex((w) => w.isCurrent)
-    const chosen = await pickWorktree(removable, {
+    // Put the worktree you're in first, so it stays visible and selected.
+    const chosen = await pickWorktree(currentWorktreeFirst(removable), {
       title: 'Remove worktree',
-      initialIndex: currentIndex >= 0 ? currentIndex : undefined,
       emptyMessage: 'no worktrees to remove',
       dirty,
     })

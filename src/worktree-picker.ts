@@ -5,6 +5,16 @@ import {select} from './select'
 const branchLabel = (w: Worktree) =>
   w.branch ?? (w.isBare ? '(bare)' : `detached @ ${w.head.slice(0, 7)}`)
 
+export function currentWorktreeFirst(worktrees: Worktree[]): Worktree[] {
+  const currentIndex = worktrees.findIndex((w) => w.isCurrent)
+  if (currentIndex <= 0) return worktrees
+  return [
+    worktrees[currentIndex],
+    ...worktrees.slice(0, currentIndex),
+    ...worktrees.slice(currentIndex + 1),
+  ]
+}
+
 // Shared interactive worktree picker: NAME/BRANCH column headers, aligned
 // columns, "root" for the main worktree. Used by every worktree prompt so they
 // all look the same. Pass `dirty` (a set of worktree paths) to flag worktrees
