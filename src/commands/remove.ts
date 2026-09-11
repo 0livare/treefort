@@ -23,7 +23,12 @@ import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
 
 export async function remove(
   name: string | undefined,
-  opts: {force?: boolean; keepBranch?: boolean; forceBranch?: boolean},
+  opts: {
+    force?: boolean
+    keepBranch?: boolean
+    forceBranch?: boolean
+    back?: () => void | Promise<void>
+  },
 ) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
@@ -80,6 +85,16 @@ export async function remove(
       title: 'Remove worktree',
       emptyMessage: 'no worktrees to remove',
       dirty,
+      shortcuts: opts.back
+        ? [
+            {
+              keys: ['\x1b[D'],
+              hint: '←',
+              label: 'back',
+              run: opts.back,
+            },
+          ]
+        : undefined,
     })
     if (!chosen) process.exit(0)
     target = chosen

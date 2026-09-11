@@ -30,7 +30,8 @@ const restoreTerminal = () => {
 }
 
 export type SelectShortcut = {
-  key: string
+  keys: string[]
+  hint: string
   label: string
   run: () => void | Promise<void>
 }
@@ -54,7 +55,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   const shortcuts = opts.shortcuts ?? []
   const hint = [
     opts.hint ?? '↑↓  navigate   ⏎  confirm   esc  cancel',
-    ...shortcuts.map((shortcut) => `${shortcut.key}  ${shortcut.label}`),
+    ...shortcuts.map((shortcut) => `${shortcut.hint}  ${shortcut.label}`),
   ].join('   ')
 
   if (items.length === 0) {
@@ -112,7 +113,9 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
     }
 
     const onKey = (key: string) => {
-      const shortcut = shortcuts.find((candidate) => candidate.key === key)
+      const shortcut = shortcuts.find((candidate) =>
+        candidate.keys.includes(key),
+      )
       if (shortcut) {
         cleanup()
         void Promise.resolve()

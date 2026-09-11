@@ -103,7 +103,8 @@ Forgot the name entirely? Just run `wt` with no arguments and pick from a list. 
 wt      # pick a worktree from a list, then automatically cd into it
 ```
 
-Press `d` in the picker to switch straight to the worktree removal picker.
+Press `d` or Right Arrow in the picker to switch straight to worktree removal;
+press Left Arrow there to return to the worktree picker.
 
 ### 🌿 Your env files come along for free
 

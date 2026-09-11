@@ -70,9 +70,10 @@ async function pick(
     title: 'Switch to worktree',
     shortcuts: [
       {
-        key: 'd',
+        keys: ['d', '\x1b[C'],
+        hint: 'd/→',
         label: 'remove',
-        run: () => remove(undefined, {}),
+        run: () => remove(undefined, {back: () => cd()}),
       },
     ],
   })
