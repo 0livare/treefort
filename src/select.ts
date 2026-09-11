@@ -29,11 +29,18 @@ const restoreTerminal = () => {
   tty.write('\x1b[?25h')
 }
 
+export type SelectShortcut = {
+  key: string
+  label: string
+  run: () => void | Promise<void>
+}
+
 export type SelectOptions<T> = {
   items: T[]
   label: (item: T) => string
   header?: string[] // full lines rendered above the list (caller styles them)
   hint?: string
+  shortcuts?: SelectShortcut[]
   initialIndex?: number
   emptyMessage?: string
 }
@@ -44,7 +51,11 @@ export type SelectOptions<T> = {
 export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   const {items, label} = opts
   const header = opts.header ?? []
-  const hint = opts.hint ?? '↑↓  navigate   ⏎  confirm   esc  cancel'
+  const shortcuts = opts.shortcuts ?? []
+  const hint = [
+    opts.hint ?? '↑↓  navigate   ⏎  confirm   esc  cancel',
+    ...shortcuts.map((shortcut) => `${shortcut.key}  ${shortcut.label}`),
+  ].join('   ')
 
   if (items.length === 0) {
     tty.write(chalk.yellow(`  ${opts.emptyMessage ?? 'Nothing to select'}\n`))
@@ -87,7 +98,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   process.stdin.resume()
   process.stdin.setEncoding('utf8')
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let done = false
 
     const cleanup = () => {
@@ -101,6 +112,15 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
     }
 
     const onKey = (key: string) => {
+      const shortcut = shortcuts.find((candidate) => candidate.key === key)
+      if (shortcut) {
+        cleanup()
+        void Promise.resolve()
+          .then(shortcut.run)
+          .then(() => resolve(null), reject)
+        return
+      }
+
       switch (key) {
         case '\x1b[A': // up arrow
         case 'k':
@@ -136,17 +156,13 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
   })
 }
 
-// Raw-mode yes/no prompt on stderr. Enter takes the default; esc/ctrl-c = no.
-export async function confirm(
-  question: string,
-  defaultYes = false,
-): Promise<boolean> {
+// Raw-mode yes/no prompt on stderr. Enter = yes; esc/ctrl-c = no.
+export async function confirm(question: string): Promise<boolean> {
   // Callers should pre-check isInteractive() to give a better error; this is
   // just a backstop so we never crash calling setRawMode off a terminal.
   if (!isInteractive()) return false
 
-  const hint = defaultYes ? 'Y/n' : 'y/N'
-  tty.write(chalk.bold(`  ${question}`) + chalk.dim(` [${hint}] `))
+  tty.write(chalk.bold(`  ${question}`) + chalk.dim(' [Y/n] '))
 
   process.stdin.setRawMode(true)
   process.stdin.resume()
@@ -157,7 +173,7 @@ export async function confirm(
       let result: boolean | null = null
       if (key === 'y' || key === 'Y') result = true
       else if (key === 'n' || key === 'N') result = false
-      else if (key === '\r') result = defaultYes
+      else if (key === '\r') result = true
       else if (key === '\x03' || key === '\x1b') result = false
       if (result === null) return
 

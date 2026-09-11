@@ -55,7 +55,7 @@ export async function remove(
       process.exit(1)
     }
 
-    await promptBranchDelete(name, {defaultYes: true})
+    await promptBranchDelete(name)
     return
   }
 
@@ -161,7 +161,7 @@ function showChanges(status: string, padding = 2) {
 }
 
 // Resolve a target the same way cd does — exact name/branch first, then fuzzy
-// ranked by frecency — but because rm is destructive, a fuzzy hit needs a y/N
+// ranked by frecency — but because rm is destructive, a fuzzy hit needs a Y/n
 // confirmation (and without a terminal, an exact name is required).
 async function resolveRemovable(
   name: string,

@@ -7,6 +7,7 @@ import {getPrevious, setPrevious} from '../prev'
 import {confirm, isInteractive} from '../select'
 import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
 import {add} from './add'
+import {remove} from './remove'
 
 // The one worktree-navigation path. With a target, resolve it (`-` = previous,
 // `root`/`@` = main, else exact-then-fuzzy name/branch match); with no target,
@@ -67,6 +68,13 @@ async function pick(
   const ranked = await rank(root, pickable)
   const chosen = await pickWorktree(currentWorktreeFirst(ranked), {
     title: 'Switch to worktree',
+    shortcuts: [
+      {
+        key: 'd',
+        label: 'remove',
+        run: () => remove(undefined, {}),
+      },
+    ],
   })
   return chosen?.path ?? null
 }
@@ -136,7 +144,7 @@ export async function offerToCreate(target: string): Promise<string | null> {
     printError(`no worktree matching "${target}"`)
     process.exit(1)
   }
-  if (await confirm(`no worktree matching "${target}" — create it?`, true)) {
+  if (await confirm(`no worktree matching "${target}" — create it?`)) {
     return add(target, undefined, {})
   }
   return null

@@ -16,13 +16,13 @@ export async function deleteBranchAndReport(branch: string): Promise<void> {
 // Ask before deleting a removed worktree's branch. The safety check — do the
 // branch's commits live on in another local branch or remote? — no longer
 // decides on its own; it's reported to the user and picks the prompt's
-// default (Y/n when safe, y/N when not). Without a terminal there's nobody to
-// ask, so fall back to auto-deleting only when safe. Callers that already
-// know deletion is safe (prune's merged-into-trunk check) pass `safe` and
-// `safeReason` to skip the re-check and explain why.
+// risk reported before a consistently Y/n prompt. Without a terminal there's
+// nobody to ask, so fall back to auto-deleting only when safe. Callers that
+// already know deletion is safe (prune's merged-into-trunk check) pass `safe`
+// and `safeReason` to skip the re-check and explain why.
 export async function promptBranchDelete(
   branch: string,
-  opts: {safe?: boolean; safeReason?: string; defaultYes?: boolean} = {},
+  opts: {safe?: boolean; safeReason?: string} = {},
 ): Promise<void> {
   const safe = opts.safe ?? (await branchIsSafeToDelete(branch))
 
@@ -43,7 +43,7 @@ export async function promptBranchDelete(
     )
   else printWarning(`branch ${branch} has commits that exist nowhere else`)
 
-  if (await confirm(`delete branch ${branch}?`, opts.defaultYes ?? safe))
+  if (await confirm(`delete branch ${branch}?`))
     await deleteBranchAndReport(branch)
   else printInfo(`kept branch ${branch}`)
 }

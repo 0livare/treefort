@@ -1,6 +1,6 @@
 import chalk from './chalk'
 import {type Worktree, worktreeName} from './git'
-import {select} from './select'
+import {type SelectShortcut, select} from './select'
 
 const branchLabel = (w: Worktree) =>
   w.branch ?? (w.isBare ? '(bare)' : `detached @ ${w.head.slice(0, 7)}`)
@@ -28,6 +28,7 @@ export function pickWorktree(
     emptyMessage?: string
     dirty?: Set<string>
     managed?: Set<string>
+    shortcuts?: SelectShortcut[]
   },
 ): Promise<Worktree | null> {
   const width = Math.max(
@@ -43,6 +44,7 @@ export function pickWorktree(
       '',
       chalk.dim(`     ${'NAME'.padEnd(width)}   BRANCH`),
     ],
+    shortcuts: opts.shortcuts,
     // Plain, column-aligned text; select() applies the row highlight/dim. The
     // dirty marker is safe to color since it's the last thing on the line.
     label: (w) => {

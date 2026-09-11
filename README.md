@@ -103,6 +103,8 @@ Forgot the name entirely? Just run `wt` with no arguments and pick from a list. 
 wt      # pick a worktree from a list, then automatically cd into it
 ```
 
+Press `d` in the picker to switch straight to the worktree removal picker.
+
 ### 🌿 Your env files come along for free
 
 A fresh worktree only gets what git tracks, so your gitignored `.env` files stay behind and nothing runs. `wt add` fixes that: it scans the main worktree (the root plus three levels down, skipping dotdirs and `node_modules`) and copies every `.env*` file — `.env`, `.env.local`, `.env.<mode>`, and friends — into the new worktree at the same relative path. Anything git already checked out is left untouched. No config, no flags, just a worktree that works on the first `cd`.
@@ -123,7 +125,7 @@ wt rm         # with no args either removes the current worktree
 
 ### 🛟 Branch cleanup that won't lose your work
 
-`wt rm feature-x` removes the worktree and asks whether to delete its branch — telling you first whether that's safe, meaning the branch's commits already live on in another branch so nothing is lost. The safety check picks the prompt's default: `Y/n` when deleting is safe, `y/N` when the changes exist nowhere else. Without a terminal (scripts), the branch is deleted only when safe.
+`wt rm feature-x` removes the worktree and asks whether to delete its branch — telling you first whether that's safe, meaning the branch's commits already live on in another branch so nothing is lost. Like every yes/no prompt in `wt`, it defaults to `Y/n`. Without a terminal (scripts), the branch is deleted only when safe.
 
 > **Squash Merges** are detected by patch-equivalence against the trunk
 
@@ -339,7 +341,7 @@ Remove a worktree. The directory is deregistered and moved out of the way
 even with a huge `node_modules`. Alias: `wt remove`.
 
 - **Target** resolves like `wt cd` (exact name/branch, then fuzzy frecency), but
-  because removal is destructive a fuzzy hit asks `y/N` first, and without a
+  because removal is destructive a fuzzy hit asks `Y/n` first, and without a
   terminal an exact name is required. With **no name** it removes the current
   worktree or, from the root, opens the picker.
 - **Dirty worktrees**: on a terminal `wt` shows the pending changes and asks to
@@ -348,7 +350,7 @@ even with a huge `node_modules`. Alias: `wt remove`.
 - **Branch deletion**: by default `wt` asks whether to delete the branch, with a
   safety check — do its commits already live on in another local or remote
   branch (squash merges are detected by patch-equivalence)? The prompt defaults
-  to yes only when deleting is safe. `-k`/`--keep-branch` never deletes;
+  to yes after reporting the result. `-k`/`--keep-branch` never deletes;
   `-D`/`--force-branch` deletes unconditionally.
 
 **Flags**

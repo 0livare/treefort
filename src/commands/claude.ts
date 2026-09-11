@@ -80,7 +80,7 @@ export async function claude(
     // so only ask when we can, rather than silently bailing on scripts.
     if (
       isInteractive() &&
-      !(await confirm('open Claude at the root instead?', true))
+      !(await confirm('open Claude at the root instead?'))
     ) {
       process.exit(0)
     }
