@@ -1,6 +1,11 @@
 import {existsSync} from 'node:fs'
 import {rank, recordAccess} from '../frecency'
-import {listWorktrees, type Worktree, worktreeName} from '../git'
+import {
+  listWorktrees,
+  pathInWorktree,
+  type Worktree,
+  worktreeName,
+} from '../git'
 import {printError, printInfo} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
@@ -48,7 +53,7 @@ export async function cd(target?: string) {
     if (current && current !== dest) await setPrevious(root, current)
     await recordAccess(root, dest)
   }
-  process.stdout.write(`${dest}\n`)
+  process.stdout.write(`${pathInWorktree(dest, current ?? null)}\n`)
 }
 
 // Interactive picker, with the current worktree first and the rest ordered by

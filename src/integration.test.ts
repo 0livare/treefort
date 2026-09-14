@@ -85,6 +85,21 @@ test('add creates a worktree off main and prints its path', async () => {
   expect(await tip(repo, 'feature')).toBe(await tip(repo, 'main'))
 })
 
+test('add preserves the current subdirectory when it exists', async () => {
+  const repo = await makeRepo()
+  const subdir = join(repo, 'packages', 'app')
+  mkdirSync(subdir, {recursive: true})
+  writeFileSync(join(subdir, 'index.ts'), '')
+  await git(repo, 'add', '.')
+  await git(repo, 'commit', '-q', '-m', 'add package')
+
+  const res = await wt(subdir, 'add', 'feature')
+  expect(res.code).toBe(0)
+  expect(res.stdout).toBe(
+    join(repo, '.worktrees', 'feature', 'packages', 'app'),
+  )
+})
+
 test('add uses .claude/worktrees when that directory exists', async () => {
   const repo = await makeRepo()
   mkdirSync(join(repo, '.claude', 'worktrees'), {recursive: true})
@@ -733,6 +748,31 @@ test('cd resolves names and toggles with -', async () => {
 
   expect((await wt(repo, 'feature')).stdout).toBe(feature)
   expect((await wt(repo, 'cd', '-')).stdout).toBe(repo)
+})
+
+test('cd preserves the current subdirectory when it exists', async () => {
+  const repo = await makeRepo()
+  const subdir = join(repo, 'packages', 'app')
+  mkdirSync(subdir, {recursive: true})
+  writeFileSync(join(subdir, 'index.ts'), '')
+  await git(repo, 'add', '.')
+  await git(repo, 'commit', '-q', '-m', 'add package')
+  const feature = (await wt(repo, 'add', 'feature')).stdout
+
+  const switched = await wt(subdir, 'feature')
+  expect(switched.code).toBe(0)
+  expect(switched.stdout).toBe(join(feature, 'packages', 'app'))
+})
+
+test('cd uses the worktree root when the current subdirectory is absent', async () => {
+  const repo = await makeRepo()
+  const feature = (await wt(repo, 'add', 'feature')).stdout
+  const localOnly = join(repo, 'local-only')
+  mkdirSync(localOnly)
+
+  const switched = await wt(localOnly, 'feature')
+  expect(switched.code).toBe(0)
+  expect(switched.stdout).toBe(feature)
 })
 
 test('help and version are subcommands', async () => {

@@ -1,6 +1,6 @@
-import {existsSync} from 'node:fs'
+import {existsSync, statSync} from 'node:fs'
 import {mkdir, rename} from 'node:fs/promises'
-import {basename, join, resolve, sep} from 'node:path'
+import {basename, isAbsolute, join, relative, resolve, sep} from 'node:path'
 
 // Directories (under the repo root) that hold worktrees. Claude Code manages
 // its own worktrees under .claude/worktrees, and can only reopen a worktree
@@ -131,6 +131,28 @@ export function worktreeName(w: Worktree): string {
 export async function currentWorktree(): Promise<string | null> {
   const {code, stdout} = await run(['git', 'rev-parse', '--show-toplevel'])
   return code === 0 ? stdout : null
+}
+
+// Keep the cwd's path relative to its current worktree when entering another
+// one, provided that directory also exists there.
+export function pathInWorktree(
+  destination: string,
+  current: string | null,
+): string {
+  if (current === null) return destination
+  const subdir = relative(current, process.cwd())
+  if (
+    !subdir ||
+    subdir === '..' ||
+    subdir.startsWith(`..${sep}`) ||
+    isAbsolute(subdir)
+  ) {
+    return destination
+  }
+  const candidate = join(destination, subdir)
+  return existsSync(candidate) && statSync(candidate).isDirectory()
+    ? candidate
+    : destination
 }
 
 // Short branch name of the current worktree, or null when HEAD is detached.

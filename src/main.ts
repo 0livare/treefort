@@ -19,6 +19,7 @@ import {
   status,
   version,
 } from './commands'
+import {currentWorktree, pathInWorktree} from './git'
 import {printError} from './helpers'
 
 async function main() {
@@ -88,9 +89,13 @@ async function main() {
   switch (command) {
     case 'add':
       // The single stdout line: where the shell wrapper should cd.
-      process.stdout.write(
-        `${await add(rest[0], rest[1], {force: cli.values.force})}\n`,
-      )
+      {
+        const current = await currentWorktree()
+        const destination = await add(rest[0], rest[1], {
+          force: cli.values.force,
+        })
+        process.stdout.write(`${pathInWorktree(destination, current)}\n`)
+      }
       break
     case 'rm':
     case 'remove':
