@@ -78,9 +78,8 @@ export async function add(
   // Base for a new branch: '.' or 'head' opts in to the invoking worktree's
   // HEAD. Resolve it to the commit now rather than passing HEAD through to a
   // later git command, so its meaning cannot shift if a worktree is freed.
-  // With no start-point, always fork off wherever the root worktree is — never
-  // whichever worktree the shell happens to be in. A bare root has no checkout
-  // to fork from, so use the trunk branch.
+  // With no start-point, always fork off the trunk branch — never whichever
+  // branch the root or invoking worktree happens to have checked out.
   let base = startPoint
   let track = false
   if (base === '.' || base?.toLowerCase() === 'head') {
@@ -103,9 +102,7 @@ export async function add(
       base = `${remotes[0]}/${branch}`
       track = true
     } else {
-      base = rootWorktree.isBare
-        ? ((await trunkBranch()) ?? '')
-        : (rootWorktree.branch ?? rootWorktree.head)
+      base = (await trunkBranch()) ?? ''
     }
     if (!base) {
       printError(

@@ -220,7 +220,7 @@ wt help
 #   - if the branch exists, it's checked out
 #   - if it only exists on a remote, a local tracking branch is created
 #     (a branch on multiple remotes errors and asks you to pick one)
-#   - otherwise a new branch is created off the root worktree
+#   - otherwise a new branch is created off main
 #     (even when you run this from inside another worktree)
 wt add feature-x
 ```
@@ -306,8 +306,9 @@ When a `name` is given, the branch is resolved in this order:
 - a branch that only exists **on a remote** is checked out as a local tracking
   branch (a branch on multiple remotes errors and asks you to pick
   `remote/branch`);
-- otherwise a **new branch** is forked off the root worktree — even when you run
-  this from inside another worktree.
+- otherwise a **new branch** is forked off `main` (or `master` when the
+  repository has no `main`) — even when you run this from inside another
+  worktree.
 
 Extra behavior:
 
@@ -329,7 +330,7 @@ Extra behavior:
   changes (its branch is checked out somewhere dirty).
 
 ```sh
-wt add feature-x               # new branch off root, cd in
+wt add feature-x               # new branch off main, cd in
 wt add feature-x origin/main   # base the new branch off origin/main
 wt add feature-x head          # base it off the current worktree's HEAD
 wt add                         # move the current branch into its own worktree

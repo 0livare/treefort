@@ -142,10 +142,7 @@ export function help() {
   ]
 
   const examples: [string, string][] = [
-    [
-      `${wt} ${c('add')} ${c('feature-x')}`,
-      'New branch off the root worktree, cd in',
-    ],
+    [`${wt} ${c('add')} ${c('feature-x')}`, 'New branch off main, cd in'],
     [
       `${wt} ${c('add')} ${c('feature-x origin/main')}`,
       'New branch off origin/main',

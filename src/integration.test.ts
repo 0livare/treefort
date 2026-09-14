@@ -407,14 +407,29 @@ test("claude --resume opens a removed worktree's session from the root", async (
   expect(res.stdout).toContain(`cwd ${repo}`)
 })
 
-test('add forks from the root worktree, not the shell cwd', async () => {
+test('add forks from main when the root worktree is on another branch', async () => {
+  const repo = await makeRepo()
+  await git(repo, 'checkout', '-q', '-b', 'root-feature')
+  writeFileSync(join(repo, 'root-feature.txt'), 'x\n')
+  await git(repo, 'add', '.')
+  await git(repo, 'commit', '-q', '-m', 'root feature')
+
+  const res = await wt(repo, 'add', 'new-feature')
+  expect(res.code).toBe(0)
+  expect(await tip(repo, 'new-feature')).toBe(await tip(repo, 'main'))
+  expect(await tip(repo, 'new-feature')).not.toBe(
+    await tip(repo, 'root-feature'),
+  )
+})
+
+test('add forks from main when invoked inside another worktree', async () => {
   const repo = await makeRepo()
   const a = (await wt(repo, 'add', 'a')).stdout
   writeFileSync(join(a, 'extra.txt'), 'x\n')
   await git(a, 'add', '.')
   await git(a, 'commit', '-q', '-m', 'extra')
 
-  const res = await wt(a, 'add', 'b') // run from inside worktree a
+  const res = await wt(a, 'add', 'b')
   expect(res.code).toBe(0)
   expect(await tip(repo, 'b')).toBe(await tip(repo, 'main'))
   expect(await tip(repo, 'b')).not.toBe(await tip(repo, 'a'))
