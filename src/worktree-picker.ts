@@ -20,6 +20,11 @@ export type WorktreePickerState = {
   selectedPath: string
 }
 
+export type WorktreePickerSnapshot = {
+  worktrees: Worktree[]
+  state: WorktreePickerState
+}
+
 export function restorePickerState(
   worktrees: Worktree[],
   state: WorktreePickerState,

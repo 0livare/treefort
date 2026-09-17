@@ -15,18 +15,27 @@ import {
   pickerState,
   pickWorktree,
   restorePickerState,
+  type WorktreePickerSnapshot,
   type WorktreePickerState,
 } from '../worktree-picker'
 import {add} from './add'
-import {prepareRemovePicker, remove} from './remove'
+import {
+  prepareRemovePicker,
+  type RemovePickerPreparation,
+  remove,
+} from './remove'
 
 // The one worktree-navigation path. With a target, resolve it (`-` = previous,
 // `root`/`@` = main, else exact-then-fuzzy name/branch match); with no target,
 // open the interactive picker. Bare `wt` and `wt <name>` both funnel through
 // here — cd is wt's default command. Prints the chosen path to stdout for the
 // shell wrapper to cd into.
-export async function cd(target?: string, picker?: WorktreePickerState) {
-  const worktrees = await listWorktrees()
+export async function cd(
+  target?: string,
+  picker?: WorktreePickerSnapshot,
+  removePreparation?: RemovePickerPreparation,
+) {
+  const worktrees = picker?.worktrees ?? (await listWorktrees())
   if (worktrees.length === 0) {
     if (target === undefined) process.exit(0) // not a git repo; nothing to pick
     printError('not a git repository')
@@ -39,7 +48,7 @@ export async function cd(target?: string, picker?: WorktreePickerState) {
   let created = false
   const dest =
     target === undefined
-      ? await pick(worktrees, root, picker)
+      ? await pick(worktrees, root, picker?.state, removePreparation)
       : await resolveWorktree({
           target,
           worktrees,
@@ -69,6 +78,7 @@ async function pick(
   worktrees: Worktree[],
   root: string,
   state?: WorktreePickerState,
+  preparation?: RemovePickerPreparation,
 ): Promise<string | null> {
   const pickable = worktrees.filter((w) => !w.isBare)
   // Only the root worktree exists — there's nothing else to switch to, so skip
@@ -83,7 +93,8 @@ async function pick(
         worktrees: currentWorktreeFirst(await rank(root, pickable)),
         initialIndex: 0,
       }
-  const removePreparation = prepareRemovePicker(worktrees)
+  const removePreparation =
+    preparation ?? Promise.resolve().then(() => prepareRemovePicker(worktrees))
   const chosen = await pickWorktree(ranked.worktrees, {
     title: 'Switch to worktree',
     initialIndex: ranked.initialIndex,
@@ -96,7 +107,8 @@ async function pick(
           remove(undefined, {
             picker: pickerState(ranked.worktrees, selectedIndex),
             preparation: removePreparation,
-            back: (nextState) => cd(undefined, nextState),
+            back: (nextPicker, nextPreparation) =>
+              cd(undefined, nextPicker, nextPreparation),
           }),
       },
     ],

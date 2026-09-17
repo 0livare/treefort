@@ -24,6 +24,7 @@ import {
   pickerState,
   pickWorktree,
   restorePickerState,
+  type WorktreePickerSnapshot,
   type WorktreePickerState,
 } from '../worktree-picker'
 
@@ -75,7 +76,10 @@ export async function remove(
     forceBranch?: boolean
     picker?: WorktreePickerState
     preparation?: RemovePickerPreparation
-    back?: (picker: WorktreePickerState) => void | Promise<void>
+    back?: (
+      picker: WorktreePickerSnapshot,
+      preparation?: RemovePickerPreparation,
+    ) => void | Promise<void>
   },
 ) {
   const preparedResult = opts.preparation ? await opts.preparation : undefined
@@ -142,7 +146,13 @@ export async function remove(
               hint: '←',
               label: 'back',
               run: (selectedIndex) =>
-                opts.back?.(pickerState(ordered.worktrees, selectedIndex)),
+                opts.back?.(
+                  {
+                    worktrees,
+                    state: pickerState(ordered.worktrees, selectedIndex),
+                  },
+                  opts.preparation,
+                ),
             },
           ]
         : undefined,

@@ -103,7 +103,7 @@ async function main() {
         force: cli.values.force,
         keepBranch: cli.values['keep-branch'],
         forceBranch: cli.values['force-branch'],
-        back: (picker) => cd(undefined, picker),
+        back: (picker, preparation) => cd(undefined, picker, preparation),
       })
       break
     case 'list':
