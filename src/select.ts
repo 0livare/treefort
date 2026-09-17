@@ -33,7 +33,7 @@ export type SelectShortcut = {
   keys: string[]
   hint: string
   label: string
-  run: () => void | Promise<void>
+  run: (selectedIndex: number) => void | Promise<void>
 }
 
 export type SelectOptions<T> = {
@@ -119,7 +119,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
       if (shortcut) {
         cleanup()
         void Promise.resolve()
-          .then(shortcut.run)
+          .then(() => shortcut.run(cursor))
           .then(() => resolve(null), reject)
         return
       }

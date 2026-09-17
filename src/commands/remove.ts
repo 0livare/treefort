@@ -19,7 +19,13 @@ import {
 } from '../helpers'
 import {matchesQuery} from '../match'
 import {confirm, isInteractive} from '../select'
-import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
+import {
+  currentWorktreeFirst,
+  pickerState,
+  pickWorktree,
+  restorePickerState,
+  type WorktreePickerState,
+} from '../worktree-picker'
 
 export async function remove(
   name: string | undefined,
@@ -27,7 +33,8 @@ export async function remove(
     force?: boolean
     keepBranch?: boolean
     forceBranch?: boolean
-    back?: () => void | Promise<void>
+    picker?: WorktreePickerState
+    back?: (picker: WorktreePickerState) => void | Promise<void>
   },
 ) {
   const worktrees = await listWorktrees()
@@ -80,9 +87,13 @@ export async function remove(
         if (await isDirty(w.path)) dirty.add(w.path)
       }),
     )
-    // Put the worktree you're in first, so it stays visible and selected.
-    const chosen = await pickWorktree(currentWorktreeFirst(removable), {
+    // Preserve the other picker's order and selection when switching modes.
+    const ordered = opts.picker
+      ? restorePickerState(removable, opts.picker)
+      : {worktrees: currentWorktreeFirst(removable), initialIndex: 0}
+    const chosen = await pickWorktree(ordered.worktrees, {
       title: 'Remove worktree',
+      initialIndex: ordered.initialIndex,
       emptyMessage: 'no worktrees to remove',
       dirty,
       shortcuts: opts.back
@@ -91,7 +102,8 @@ export async function remove(
               keys: ['\x1b[D'],
               hint: '←',
               label: 'back',
-              run: opts.back,
+              run: (selectedIndex) =>
+                opts.back?.(pickerState(ordered.worktrees, selectedIndex)),
             },
           ]
         : undefined,

@@ -15,6 +15,44 @@ export function currentWorktreeFirst(worktrees: Worktree[]): Worktree[] {
   ]
 }
 
+export type WorktreePickerState = {
+  order: string[]
+  selectedPath: string
+}
+
+export function restorePickerState(
+  worktrees: Worktree[],
+  state: WorktreePickerState,
+): {worktrees: Worktree[]; initialIndex: number} {
+  const positions = new Map(state.order.map((path, index) => [path, index]))
+  const ordered = worktrees
+    .map((worktree, index) => ({worktree, index}))
+    .sort((a, b) => {
+      const aPosition = positions.get(a.worktree.path)
+      const bPosition = positions.get(b.worktree.path)
+      if (aPosition == null && bPosition == null) return a.index - b.index
+      if (aPosition == null) return 1
+      if (bPosition == null) return -1
+      return aPosition - bPosition
+    })
+    .map(({worktree}) => worktree)
+
+  const initialIndex = ordered.findIndex(
+    (worktree) => worktree.path === state.selectedPath,
+  )
+  return {worktrees: ordered, initialIndex: Math.max(initialIndex, 0)}
+}
+
+export function pickerState(
+  worktrees: Worktree[],
+  selectedIndex: number,
+): WorktreePickerState {
+  return {
+    order: worktrees.map((worktree) => worktree.path),
+    selectedPath: worktrees[selectedIndex].path,
+  }
+}
+
 // Shared interactive worktree picker: NAME/BRANCH column headers, aligned
 // columns, "root" for the main worktree. Used by every worktree prompt so they
 // all look the same. Pass `dirty` (a set of worktree paths) to flag worktrees

@@ -10,7 +10,13 @@ import {printError, printInfo} from '../helpers'
 import {matchesQuery} from '../match'
 import {getPrevious, setPrevious} from '../prev'
 import {confirm, isInteractive} from '../select'
-import {currentWorktreeFirst, pickWorktree} from '../worktree-picker'
+import {
+  currentWorktreeFirst,
+  pickerState,
+  pickWorktree,
+  restorePickerState,
+  type WorktreePickerState,
+} from '../worktree-picker'
 import {add} from './add'
 import {remove} from './remove'
 
@@ -19,7 +25,7 @@ import {remove} from './remove'
 // open the interactive picker. Bare `wt` and `wt <name>` both funnel through
 // here — cd is wt's default command. Prints the chosen path to stdout for the
 // shell wrapper to cd into.
-export async function cd(target?: string) {
+export async function cd(target?: string, picker?: WorktreePickerState) {
   const worktrees = await listWorktrees()
   if (worktrees.length === 0) {
     if (target === undefined) process.exit(0) // not a git repo; nothing to pick
@@ -33,7 +39,7 @@ export async function cd(target?: string) {
   let created = false
   const dest =
     target === undefined
-      ? await pick(worktrees, root)
+      ? await pick(worktrees, root, picker)
       : await resolveWorktree({
           target,
           worktrees,
@@ -62,6 +68,7 @@ export async function cd(target?: string) {
 async function pick(
   worktrees: Worktree[],
   root: string,
+  state?: WorktreePickerState,
 ): Promise<string | null> {
   const pickable = worktrees.filter((w) => !w.isBare)
   // Only the root worktree exists — there's nothing else to switch to, so skip
@@ -70,15 +77,25 @@ async function pick(
     printInfo('no other worktrees — run `wt add <name>` to create one')
     return null
   }
-  const ranked = await rank(root, pickable)
-  const chosen = await pickWorktree(currentWorktreeFirst(ranked), {
+  const ranked = state
+    ? restorePickerState(pickable, state)
+    : {
+        worktrees: currentWorktreeFirst(await rank(root, pickable)),
+        initialIndex: 0,
+      }
+  const chosen = await pickWorktree(ranked.worktrees, {
     title: 'Switch to worktree',
+    initialIndex: ranked.initialIndex,
     shortcuts: [
       {
         keys: ['d', '\x1b[C'],
         hint: 'd/→',
         label: 'remove',
-        run: () => remove(undefined, {back: () => cd()}),
+        run: (selectedIndex) =>
+          remove(undefined, {
+            picker: pickerState(ranked.worktrees, selectedIndex),
+            back: (nextState) => cd(undefined, nextState),
+          }),
       },
     ],
   })
