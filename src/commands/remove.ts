@@ -27,6 +27,38 @@ import {
   type WorktreePickerState,
 } from '../worktree-picker'
 
+type PreparedRemovePicker = {
+  worktrees: Worktree[]
+  dirty: Set<string>
+}
+
+export type RemovePickerPreparation = Promise<
+  {value: PreparedRemovePicker} | {error: unknown}
+>
+
+export function prepareRemovePicker(
+  worktrees: Worktree[],
+  checkDirty: (path: string) => Promise<boolean> = isDirty,
+): RemovePickerPreparation {
+  const removable = worktrees.filter((worktree) => !worktree.isMain)
+  return Promise.all(
+    removable.map(async (worktree) => ({
+      path: worktree.path,
+      dirty: await checkDirty(worktree.path),
+    })),
+  ).then(
+    (results) => ({
+      value: {
+        worktrees,
+        dirty: new Set(
+          results.filter((result) => result.dirty).map((result) => result.path),
+        ),
+      },
+    }),
+    (error: unknown) => ({error}),
+  )
+}
+
 export async function remove(
   name: string | undefined,
   opts: {
@@ -34,10 +66,14 @@ export async function remove(
     keepBranch?: boolean
     forceBranch?: boolean
     picker?: WorktreePickerState
+    preparation?: RemovePickerPreparation
     back?: (picker: WorktreePickerState) => void | Promise<void>
   },
 ) {
-  const worktrees = await listWorktrees()
+  const preparedResult = opts.preparation ? await opts.preparation : undefined
+  if (preparedResult && 'error' in preparedResult) throw preparedResult.error
+  const prepared = preparedResult?.value
+  const worktrees = prepared?.worktrees ?? (await listWorktrees())
   if (worktrees.length === 0) {
     printError('not a git repository')
     process.exit(1)
@@ -81,12 +117,20 @@ export async function remove(
     target = await resolveRemovable(name, removable, root)
   } else {
     // Flag worktrees with uncommitted changes so the picker can mark them.
-    const dirty = new Set<string>()
-    await Promise.all(
-      removable.map(async (w) => {
-        if (await isDirty(w.path)) dirty.add(w.path)
-      }),
-    )
+    const dirty =
+      prepared?.dirty ??
+      new Set(
+        (
+          await Promise.all(
+            removable.map(async (w) => ({
+              path: w.path,
+              dirty: await isDirty(w.path),
+            })),
+          )
+        )
+          .filter((result) => result.dirty)
+          .map((result) => result.path),
+      )
     // Preserve the other picker's order and selection when switching modes.
     const ordered = opts.picker
       ? restorePickerState(removable, opts.picker)
