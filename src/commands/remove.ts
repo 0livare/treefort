@@ -36,23 +36,31 @@ export type RemovePickerPreparation = Promise<
   {value: PreparedRemovePicker} | {error: unknown}
 >
 
+async function collectDirtyWorktrees(
+  worktrees: Worktree[],
+  checkDirty: (path: string) => Promise<boolean> = isDirty,
+): Promise<Set<string>> {
+  const results = await Promise.all(
+    worktrees.map(async (worktree) => ({
+      path: worktree.path,
+      dirty: await checkDirty(worktree.path),
+    })),
+  )
+  return new Set(
+    results.filter((result) => result.dirty).map((result) => result.path),
+  )
+}
+
 export function prepareRemovePicker(
   worktrees: Worktree[],
   checkDirty: (path: string) => Promise<boolean> = isDirty,
 ): RemovePickerPreparation {
   const removable = worktrees.filter((worktree) => !worktree.isMain)
-  return Promise.all(
-    removable.map(async (worktree) => ({
-      path: worktree.path,
-      dirty: await checkDirty(worktree.path),
-    })),
-  ).then(
-    (results) => ({
+  return collectDirtyWorktrees(removable, checkDirty).then(
+    (dirty) => ({
       value: {
         worktrees,
-        dirty: new Set(
-          results.filter((result) => result.dirty).map((result) => result.path),
-        ),
+        dirty,
       },
     }),
     (error: unknown) => ({error}),
@@ -117,20 +125,7 @@ export async function remove(
     target = await resolveRemovable(name, removable, root)
   } else {
     // Flag worktrees with uncommitted changes so the picker can mark them.
-    const dirty =
-      prepared?.dirty ??
-      new Set(
-        (
-          await Promise.all(
-            removable.map(async (w) => ({
-              path: w.path,
-              dirty: await isDirty(w.path),
-            })),
-          )
-        )
-          .filter((result) => result.dirty)
-          .map((result) => result.path),
-      )
+    const dirty = prepared?.dirty ?? (await collectDirtyWorktrees(removable))
     // Preserve the other picker's order and selection when switching modes.
     const ordered = opts.picker
       ? restorePickerState(removable, opts.picker)
