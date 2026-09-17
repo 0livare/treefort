@@ -124,9 +124,9 @@ export async function remove(
     process.exit(0)
   }
 
-  let target: Worktree
+  let targets: Worktree[]
   if (name) {
-    target = await resolveRemovable(name, removable, root)
+    targets = [await resolveRemovable(name, removable, root)]
   } else {
     // Flag worktrees with uncommitted changes so the picker can mark them.
     const dirty = prepared?.dirty ?? (await collectDirtyWorktrees(removable))
@@ -135,10 +135,11 @@ export async function remove(
       ? restorePickerState(removable, opts.picker)
       : {worktrees: currentWorktreeFirst(removable), initialIndex: 0}
     const chosen = await pickWorktree(ordered.worktrees, {
-      title: 'Remove worktree',
+      title: 'Remove worktrees',
       initialIndex: ordered.initialIndex,
       emptyMessage: 'no worktrees to remove',
       dirty,
+      multiple: true,
       shortcuts: opts.back
         ? [
             {
@@ -158,37 +159,8 @@ export async function remove(
         : undefined,
     })
     if (!chosen) process.exit(0)
-    target = chosen
+    targets = chosen
   }
-
-  // Dirty guard (checked against the worktree's own path, still present here).
-  // On a terminal we show the changes and ask to remove anyway, rather than
-  // making the user re-run with --force. Without one (scripts, or the wrapper
-  // capturing stdout) there's nobody to ask, so we error and point at --force.
-  if (!opts.force) {
-    const status = await worktreeStatus(target.path)
-    if (status) {
-      if (!isInteractive()) {
-        printError(
-          `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
-        )
-        showChanges(status)
-        process.exit(1)
-      }
-
-      say(
-        chalk.redBright.bold(
-          `  ${worktreeName(target)} has uncommitted changes that will be permanently lost:`,
-        ),
-      )
-      showChanges(status, 4)
-      const question = chalk.red(`permanently remove ${worktreeName(target)}?`)
-      if (!(await confirm(question))) process.exit(0)
-    }
-  }
-
-  const isCurrent = target.isCurrent
-  const branch = target.branch
 
   // Branch deletion. By default we ask, with the safety check — do the
   // branch's commits live on in another branch (local or remote)? — reported
@@ -204,29 +176,60 @@ export async function remove(
   // worktree we're standing in, our cwd is about to disappear.
   process.chdir(root)
 
-  if (!(await trashWorktree(root, target.path))) {
-    printError(`could not remove ${worktreeName(target)}`)
-    process.exit(1)
-  }
+  let removedCurrent = false
+  for (const target of targets) {
+    if (!opts.force && !(await confirmDirtyRemoval(target))) continue
 
-  printSuccess(`removed ${worktreeName(target)} (deleting in background)`)
+    if (!(await trashWorktree(root, target.path))) {
+      printError(`could not remove ${worktreeName(target)}`)
+      process.exit(1)
+    }
 
-  // Delete the branch unless asked to keep it. --force-branch deletes without
-  // asking; otherwise prompt, defaulting to yes only when deletion is safe.
-  if (branchDeleteMode !== 'none') {
-    if (!branch) {
-      // Only worth mentioning when deletion was asked for explicitly.
-      if (opts.forceBranch)
-        printWarning('worktree was detached — no branch to delete')
-    } else if (branchDeleteMode === 'force') {
-      await deleteBranchAndReport(branch)
-    } else {
-      await promptBranchDelete(branch)
+    printSuccess(`removed ${worktreeName(target)} (deleting in background)`)
+    removedCurrent ||= target.isCurrent
+
+    // Delete the branch unless asked to keep it. --force-branch deletes without
+    // asking; otherwise prompt, defaulting to yes only when deletion is safe.
+    if (branchDeleteMode !== 'none') {
+      if (!target.branch) {
+        // Only worth mentioning when deletion was asked for explicitly.
+        if (opts.forceBranch)
+          printWarning('worktree was detached — no branch to delete')
+      } else if (branchDeleteMode === 'force') {
+        await deleteBranchAndReport(target.branch)
+      } else {
+        await promptBranchDelete(target.branch)
+      }
     }
   }
 
-  // If we removed the worktree we were in, cd the wrapper back to the root.
-  if (isCurrent) process.stdout.write(`${root}\n`)
+  // At most one stdout path, even when a batch includes the current worktree.
+  if (removedCurrent) process.stdout.write(`${root}\n`)
+}
+
+// Dirty guard (checked against the worktree's own path, still present here).
+// On a terminal we show the changes and ask to remove anyway. Declining skips
+// that worktree so the rest of a multi-selection can still be processed.
+async function confirmDirtyRemoval(target: Worktree): Promise<boolean> {
+  const status = await worktreeStatus(target.path)
+  if (!status) return true
+
+  if (!isInteractive()) {
+    printError(
+      `${worktreeName(target)} has uncommitted changes — use --force to remove anyway`,
+    )
+    showChanges(status)
+    process.exit(1)
+  }
+
+  say(
+    chalk.redBright.bold(
+      `  ${worktreeName(target)} has uncommitted changes that will be permanently lost:`,
+    ),
+  )
+  showChanges(status, 4)
+  const question = chalk.red(`permanently remove ${worktreeName(target)}?`)
+  return confirm(question)
 }
 
 // Print `git status --short` output, one blue line per pending change.

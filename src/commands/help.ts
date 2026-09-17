@@ -101,7 +101,7 @@ export function help() {
     ],
     [
       `${wt} ${c('rm')} ${c('[name]')}`,
-      `Remove a worktree (deletes in background)${chalk.dim(' (alias: remove)')}`,
+      `Remove one or more worktrees (deletes in background)${chalk.dim(' (alias: remove)')}`,
     ],
     [
       `${wt} ${c('rename')} ${c('[old] <new>')}`,

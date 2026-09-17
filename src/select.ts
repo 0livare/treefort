@@ -43,18 +43,39 @@ export type SelectOptions<T> = {
   hint?: string
   shortcuts?: SelectShortcut[]
   initialIndex?: number
+  multiple?: boolean
   emptyMessage?: string
 }
 
+export function resolveSelectedItems<T>(
+  items: T[],
+  selected: Set<number>,
+  cursor: number,
+): T[] {
+  if (selected.size === 0) return [items[cursor]]
+  return items.filter((_, index) => selected.has(index))
+}
+
 // Raw-mode arrow-key list picker. Renders to stderr so it works even when the
-// zsh wrapper is capturing stdout via $(). Returns the chosen item, or null on
-// cancel / empty list.
-export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
+// zsh wrapper is capturing stdout via $(). Returns the chosen item(s), or null
+// on cancel / empty list.
+export function select<T>(
+  opts: SelectOptions<T> & {multiple: true},
+): Promise<T[] | null>
+export function select<T>(
+  opts: SelectOptions<T> & {multiple?: false},
+): Promise<T | null>
+export async function select<T>(
+  opts: SelectOptions<T>,
+): Promise<T | T[] | null> {
   const {items, label} = opts
   const header = opts.header ?? []
   const shortcuts = opts.shortcuts ?? []
   const hint = [
-    opts.hint ?? '↑↓  navigate   ⏎  confirm   esc  cancel',
+    opts.hint ??
+      (opts.multiple
+        ? '↑↓  navigate   space  toggle   ⏎  confirm   esc  cancel'
+        : '↑↓  navigate   ⏎  confirm   esc  cancel'),
     ...shortcuts.map((shortcut) => `${shortcut.hint}  ${shortcut.label}`),
   ].join('   ')
 
@@ -70,6 +91,7 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
 
   let cursor = opts.initialIndex ?? 0
   if (cursor < 0 || cursor >= items.length) cursor = 0
+  const selected = new Set<number>()
 
   const totalLines = header.length + items.length + 2 // + blank + hint
 
@@ -80,10 +102,11 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
 
     for (let i = 0; i < items.length; i++) {
       const text = label(items[i])
+      const marker = opts.multiple ? `${selected.has(i) ? '●' : '○'}  ` : ''
       if (i === cursor) {
-        tty.write(chalk.cyan(`  ❯  ${chalk.bold(text)}\n`))
+        tty.write(chalk.cyan(`  ❯  ${marker}${chalk.bold(text)}\n`))
       } else {
-        tty.write(`     ${chalk.dim(text)}\n`)
+        tty.write(`     ${chalk.dim(`${marker}${text}`)}\n`)
       }
     }
 
@@ -135,9 +158,21 @@ export async function select<T>(opts: SelectOptions<T>): Promise<T | null> {
           cursor = (cursor + 1) % items.length
           render()
           break
+        case ' ':
+          if (!opts.multiple) break
+          if (selected.has(cursor)) selected.delete(cursor)
+          else selected.add(cursor)
+          cursor = (cursor + 1) % items.length
+          render()
+          break
         case '\r': // enter
+        case '\n':
           cleanup()
-          resolve(items[cursor])
+          resolve(
+            opts.multiple
+              ? resolveSelectedItems(items, selected, cursor)
+              : items[cursor],
+          )
           break
         case '\x03': // ctrl+c
         case '\x1b': // esc

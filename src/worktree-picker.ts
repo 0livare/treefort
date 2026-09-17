@@ -63,39 +63,54 @@ export function pickerState(
 // all look the same. Pass `dirty` (a set of worktree paths) to flag worktrees
 // with uncommitted changes, or `managed` to flag the ones Claude Code can open.
 // Returns the chosen worktree, or null on cancel/empty.
+type WorktreePickerOptions = {
+  title: string
+  initialIndex?: number
+  emptyMessage?: string
+  dirty?: Set<string>
+  managed?: Set<string>
+  shortcuts?: SelectShortcut[]
+}
+
 export function pickWorktree(
   worktrees: Worktree[],
-  opts: {
-    title: string
-    initialIndex?: number
-    emptyMessage?: string
-    dirty?: Set<string>
-    managed?: Set<string>
-    shortcuts?: SelectShortcut[]
-  },
-): Promise<Worktree | null> {
+  opts: WorktreePickerOptions & {multiple: true},
+): Promise<Worktree[] | null>
+export function pickWorktree(
+  worktrees: Worktree[],
+  opts: WorktreePickerOptions & {multiple?: false},
+): Promise<Worktree | null>
+export function pickWorktree(
+  worktrees: Worktree[],
+  opts: WorktreePickerOptions & {multiple?: boolean},
+): Promise<Worktree | Worktree[] | null> {
   const width = Math.max(
     ...worktrees.map((w) => worktreeName(w).length),
     'NAME'.length,
   )
 
-  return select<Worktree>({
+  const selectOpts = {
     items: worktrees,
     initialIndex: opts.initialIndex,
     header: [
       chalk.bold(`  ${opts.title}`),
       '',
-      chalk.dim(`     ${'NAME'.padEnd(width)}   BRANCH`),
+      chalk.dim(
+        `${opts.multiple ? '        ' : '     '}${'NAME'.padEnd(width)}   BRANCH`,
+      ),
     ],
     shortcuts: opts.shortcuts,
     // Plain, column-aligned text; select() applies the row highlight/dim. The
     // dirty marker is safe to color since it's the last thing on the line.
-    label: (w) => {
+    label: (w: Worktree) => {
       let row = `${worktreeName(w).padEnd(width)}   ${branchLabel(w)}`
       if (opts.managed?.has(w.path)) row += ` ${chalk.blue('◆ claude')}`
       if (opts.dirty?.has(w.path)) row += ` ${chalk.red('✗')}`
       return row
     },
     emptyMessage: opts.emptyMessage ?? 'No worktrees found',
-  })
+  }
+  return opts.multiple
+    ? select<Worktree>({...selectOpts, multiple: true})
+    : select<Worktree>({...selectOpts, multiple: false})
 }
