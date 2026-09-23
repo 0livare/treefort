@@ -346,6 +346,8 @@ even with a huge `node_modules`. Alias: `wt remove`.
   because removal is destructive a fuzzy hit asks `Y/n` first, and without a
   terminal an exact name is required. With **no name** it removes the current
   worktree or, from the root, opens the picker.
+- **Picker**: Space checks or unchecks the focused row without moving focus.
+  Enter removes only checked rows, or the focused row if none are checked.
 - **Dirty worktrees**: on a terminal `wt` shows the pending changes and asks to
   remove anyway; non-interactively it errors and points at `--force`. `-f`/
   `--force` skips the guard.

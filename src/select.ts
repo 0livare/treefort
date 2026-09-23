@@ -162,7 +162,6 @@ export async function select<T>(
           if (!opts.multiple) break
           if (selected.has(cursor)) selected.delete(cursor)
           else selected.add(cursor)
-          cursor = (cursor + 1) % items.length
           render()
           break
         case '\r': // enter
