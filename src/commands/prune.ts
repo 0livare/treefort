@@ -10,7 +10,13 @@ import {
   worktreeName,
   worktreeStatus,
 } from '../git'
-import {printError, printInfo, printSuccess, printWarning} from '../helpers'
+import {
+  printError,
+  printInfo,
+  printSuccess,
+  printWarning,
+  spinner,
+} from '../helpers'
 import {confirm, isInteractive} from '../select'
 
 // Remove every linked worktree whose branch is already merged into the trunk
@@ -36,8 +42,15 @@ export async function prune(opts: {force?: boolean}) {
 
   const merged: {w: Worktree; into: string}[] = []
   const likely: {w: Worktree; match: LikelyMerge}[] = []
-  for (const w of worktrees) {
-    if (w.isMain || w.branch == null || w.branch === trunk) continue
+  const toCheck = worktrees.filter(
+    (w): w is Worktree & {branch: string} =>
+      !w.isMain && w.branch != null && w.branch !== trunk,
+  )
+  const progress = spinner(`checking worktrees against ${trunk}`)
+  for (const [i, w] of toCheck.entries()) {
+    progress.update(
+      `checking ${worktreeName(w)} against ${trunk} (${i + 1}/${toCheck.length})`,
+    )
     const into = await mergedInto(w.branch, trunk)
     if (into) {
       merged.push({w, into})
@@ -46,6 +59,7 @@ export async function prune(opts: {force?: boolean}) {
     const match = await likelyMergedCommit(w.branch, trunk)
     if (match) likely.push({w, match})
   }
+  progress.stop()
   if (merged.length === 0 && likely.length === 0) {
     printInfo(`no worktrees with branches merged into ${trunk}`)
     return
