@@ -1,8 +1,7 @@
 import {promptBranchDelete} from '../branch-delete'
 import {
-  branchesMergedInto,
-  isSquashMergedInto,
   listWorktrees,
+  mergedInto,
   trashWorktree,
   trunkBranch,
   type Worktree,
@@ -29,15 +28,11 @@ export async function prune(opts: {force?: boolean}) {
     process.exit(1)
   }
 
-  const merged = new Set(await branchesMergedInto(trunk))
-  merged.delete(trunk)
-
-  const candidates: Worktree[] = []
+  const candidates: {w: Worktree; into: string}[] = []
   for (const w of worktrees) {
     if (w.isMain || w.branch == null || w.branch === trunk) continue
-    if (merged.has(w.branch) || (await isSquashMergedInto(w.branch, trunk))) {
-      candidates.push(w)
-    }
+    const into = await mergedInto(w.branch, trunk)
+    if (into) candidates.push({w, into})
   }
   if (candidates.length === 0) {
     printInfo(`no worktrees with branches merged into ${trunk}`)
@@ -49,7 +44,7 @@ export async function prune(opts: {force?: boolean}) {
 
   let removed = 0
   let currentRemoved = false
-  for (const w of candidates) {
+  for (const {w, into} of candidates) {
     // Dirty guard is checked before trashing, while the dir still exists.
     if (!opts.force && (await worktreeStatus(w.path))) {
       printWarning(
@@ -67,7 +62,7 @@ export async function prune(opts: {force?: boolean}) {
     if (w.branch) {
       await promptBranchDelete(w.branch, {
         safe: true,
-        safeReason: `merged into ${trunk}`,
+        safeReason: `merged into ${into}`,
       })
     }
     removed++

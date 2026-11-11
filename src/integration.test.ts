@@ -623,6 +623,53 @@ test('prune removes squash-merged worktrees and keeps unmerged ones', async () =
   expect((await wt(repo, '__complete', 'worktrees')).stdout).toBe('unmerged')
 })
 
+async function commitFile(
+  dir: string,
+  file: string,
+  content: string,
+  message: string,
+): Promise<void> {
+  writeFileSync(join(dir, file), content)
+  await git(dir, 'add', '.')
+  await git(dir, 'commit', '-q', '-m', message)
+}
+
+test('prune removes a squash that landed alongside other changes', async () => {
+  const repo = await makeRepo()
+  const topic = (await wt(repo, 'add', 'topic')).stdout
+  await commitFile(topic, 'one.txt', '1\n', 'c1')
+
+  // The squash commit also carries an unrelated change, so its patch isn't
+  // identical to the branch's and `git cherry` can't match it.
+  await git(repo, 'merge', '--squash', '-q', 'topic')
+  await commitFile(repo, 'extra.txt', 'x\n', 'topic (squashed) + extra')
+
+  const res = await wt(repo, 'prune')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('removed topic')
+  expect((await git(repo, 'branch', '--list', 'topic')).stdout).toBe('')
+})
+
+test('prune sees merges on the remote trunk when local main is behind', async () => {
+  const src = await makeRepo()
+  const repo = join(scratch, 'clone-prune')
+  await git(scratch, 'clone', '-q', src, repo)
+
+  const topic = (await wt(repo, 'add', 'topic')).stdout
+  await commitFile(topic, 'one.txt', '1\n', 'c1')
+  await git(topic, 'push', '-q', 'origin', 'topic')
+
+  await git(src, 'merge', '--squash', '-q', 'topic')
+  await git(src, 'commit', '-q', '-m', 'topic (squashed)')
+  await git(repo, 'fetch', '-q', 'origin')
+  expect(await tip(repo, 'main')).not.toBe(await tip(repo, 'origin/main'))
+
+  const res = await wt(repo, 'prune')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('removed topic')
+  expect((await git(repo, 'branch', '--list', 'topic')).stdout).toBe('')
+})
+
 // Without a TTY there's nobody to answer the delete-branch prompt, so rm
 // falls back to auto-deleting only when that's safe.
 test('rm without a TTY deletes a squash-merged branch but keeps an unmerged one', async () => {

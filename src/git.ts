@@ -204,23 +204,6 @@ export async function trunkBranch(): Promise<string | null> {
   return null
 }
 
-// Local branch names whose tip is reachable from `ref` — i.e. already merged
-// into it. Includes `ref`'s own branch, so callers should filter it out.
-export async function branchesMergedInto(ref: string): Promise<string[]> {
-  const {code, stdout} = await run([
-    'git',
-    'branch',
-    '--merged',
-    ref,
-    '--format=%(refname:short)',
-  ])
-  if (code !== 0) return []
-  return stdout
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-
 // The worktree currently checking out `branch`, if any.
 export async function worktreeForBranch(
   branch: string,
@@ -391,10 +374,65 @@ export async function isSquashMergedInto(
   return cherry.code === 0 && cherry.stdout.startsWith('-')
 }
 
+// True if merging `branch` into `ref` would change nothing — every change on
+// the branch is already in `ref`, even when the squash that landed it isn't
+// patch-identical (trunk touched the same hunks first, conflicts were resolved
+// on GitHub, …). Needs git ≥ 2.38; a conflict or an older git reads as false.
+export async function mergeIsNoOp(
+  branch: string,
+  ref: string,
+): Promise<boolean> {
+  const merged = await run(['git', 'merge-tree', '--write-tree', ref, branch])
+  if (merged.code !== 0) return false
+  const tree = await run(['git', 'rev-parse', `${ref}^{tree}`])
+  if (tree.code !== 0) return false
+  return merged.stdout.split('\n')[0] === tree.stdout
+}
+
+// The refs that count as "the trunk": the local branch plus its remote
+// counterpart — the configured upstream, or else any remote's branch of the
+// same name — so a stale local main still sees what was last fetched.
+export async function trunkRefs(trunk: string): Promise<string[]> {
+  const upstream = await run([
+    'git',
+    'rev-parse',
+    '--abbrev-ref',
+    `${trunk}@{upstream}`,
+  ])
+  if (upstream.code === 0 && upstream.stdout) return [trunk, upstream.stdout]
+  const remotes = await remotesWithBranch(trunk)
+  return [trunk, ...remotes.map((r) => `${r}/${trunk}`)]
+}
+
+// The trunk ref (local or remote-tracking) that `branch` is provably merged
+// into — by ancestry, a patch-identical squash, or a merge that would be a
+// no-op — or null. Checks run cheapest first and stop at the first hit.
+export async function mergedInto(
+  branch: string,
+  trunk: string,
+): Promise<string | null> {
+  const refs = await trunkRefs(trunk)
+  for (const ref of refs) {
+    const ancestor = await run([
+      'git',
+      'merge-base',
+      '--is-ancestor',
+      branch,
+      ref,
+    ])
+    if (ancestor.code === 0) return ref
+  }
+  for (const ref of refs) {
+    if (await isSquashMergedInto(branch, ref)) return ref
+    if (await mergeIsNoOp(branch, ref)) return ref
+  }
+  return null
+}
+
 // True if deleting `branch` would lose no work: its tip commit is contained in
 // the history of some *other* ref — another local branch or any
 // remote-tracking ref (covers both "merged into main" and "pushed") — or its
-// changes were squash-merged into the trunk.
+// changes already landed in the trunk (see mergedInto).
 export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
   const {code, stdout} = await run([
     'git',
@@ -414,7 +452,7 @@ export async function branchIsSafeToDelete(branch: string): Promise<boolean> {
 
   const trunk = await trunkBranch()
   if (!trunk || trunk === branch) return false
-  return isSquashMergedInto(branch, trunk)
+  return (await mergedInto(branch, trunk)) !== null
 }
 
 // Delete a branch, also reporting the commit it pointed at (`hash`) so the
