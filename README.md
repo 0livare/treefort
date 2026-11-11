@@ -128,7 +128,7 @@ wt rm         # with no args either removes the current worktree
 
 `wt rm feature-x` removes the worktree and asks whether to delete its branch — telling you first whether that's safe, meaning the branch's commits already live on in another branch so nothing is lost. Like every yes/no prompt in `wt`, it defaults to `Y/n`. Without a terminal (scripts), the branch is deleted only when safe.
 
-> **Squash Merges** are detected by patch-equivalence against the trunk
+> **Squash Merges** are detected against the trunk (local and remote-tracking) by patch-equivalence, or when merging the branch again would change nothing
 
 Need to skip the prompt? `--keep-branch` (`-k`) always keeps it; `--force-branch` (`-D`) deletes it even if commits would be lost.
 
@@ -400,6 +400,17 @@ plain `git branch --merged` can't see. It asks before deleting each merged
 branch (Enter accepts, since merged means nothing is lost; branches are
 auto-deleted when there's no terminal to ask). Dirty worktrees are skipped
 unless `--force`.
+
+Merges are checked against both the local trunk and its remote-tracking ref
+(e.g. `origin/main`, as of your last fetch). A branch counts as merged when its
+tip is in the trunk, a patch-identical squash landed, or merging it again would
+change nothing.
+
+Branches that only _look_ merged — a trunk commit since the branch forked
+touches ≥ 90% of its files and either has a ≥ 90% matching diff (branches with
+20+ changed lines) or names the branch's ticket key (`ABC-123` from
+`feature/abc-123-thing`) — are listed with the matching commit and offered one
+at a time. Without a terminal they're always kept.
 
 **Flags**
 

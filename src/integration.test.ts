@@ -621,7 +621,7 @@ test('prune removes squash-merged worktrees and keeps unmerged ones', async () =
   expect(res.stderr).toContain(`deleted branch topic (was ${topicHash})`)
   expect((await git(repo, 'branch', '--list', 'topic')).stdout).toBe('')
   expect((await wt(repo, '__complete', 'worktrees')).stdout).toBe('unmerged')
-})
+}, 15_000)
 
 async function commitFile(
   dir: string,
@@ -630,7 +630,8 @@ async function commitFile(
   message: string,
 ): Promise<void> {
   writeFileSync(join(dir, file), content)
-  await git(dir, 'add', '.')
+  // Only this file: `add .` at the root would also stage .worktrees/ gitlinks.
+  await git(dir, 'add', file)
   await git(dir, 'commit', '-q', '-m', message)
 }
 
@@ -649,6 +650,50 @@ test('prune removes a squash that landed alongside other changes', async () => {
   expect(res.stderr).toContain('removed topic')
   expect((await git(repo, 'branch', '--list', 'topic')).stdout).toBe('')
 })
+
+test('prune flags a ticket-matched squash as likely merged but keeps it without a TTY', async () => {
+  const repo = await makeRepo()
+  const ticket = (await wt(repo, 'add', 'abc-123-thing')).stdout
+  await commitFile(ticket, 'one.txt', '1\n', 'wip')
+  const unrelated = (await wt(repo, 'add', 'abc-124-other')).stdout
+  await commitFile(unrelated, 'two.txt', '2\n', 'wip')
+
+  // Landed with a different diff (a review tweak), so it isn't provably merged.
+  await commitFile(repo, 'one.txt', '1 reviewed\n', 'ABC-123: thing (#4)')
+  // Names the other ticket but touches none of its files.
+  await commitFile(repo, 'other.txt', 'o\n', 'ABC-124: prep (#5)')
+
+  const res = await wt(repo, 'prune')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('abc-123-thing looks merged')
+  expect(res.stderr).toContain('mentions ABC-123')
+  expect(res.stderr).not.toContain('abc-124-other')
+  expect(existsSync(ticket)).toBe(true)
+  expect(existsSync(unrelated)).toBe(true)
+}, 15_000)
+
+test('prune flags a squash whose diff is ≥ 90% the same as likely merged', async () => {
+  const repo = await makeRepo()
+  const lines = Array.from({length: 100}, (_, i) => `line ${i}`)
+  const text = (ls: string[]) => `${ls.join('\n')}\n`
+
+  const big = (await wt(repo, 'add', 'big')).stdout
+  await commitFile(big, 'big.txt', text(lines), 'big')
+  const half = (await wt(repo, 'add', 'half')).stdout
+  await commitFile(half, 'half.txt', text(lines), 'half')
+
+  const tweaked = lines.map((l, i) => (i % 33 === 1 ? `${l} tweaked` : l))
+  await commitFile(repo, 'big.txt', text(tweaked), 'big work (#6)')
+  const rewritten = lines.map((l, i) => (i % 2 ? `${l} rewritten` : l))
+  await commitFile(repo, 'half.txt', text(rewritten), 'half work (#7)')
+
+  const res = await wt(repo, 'prune')
+  expect(res.code).toBe(0)
+  expect(res.stderr).toContain('big looks merged')
+  expect(res.stderr).toContain('97% same diff')
+  expect(res.stderr).not.toContain('half')
+  expect(existsSync(big)).toBe(true)
+}, 15_000)
 
 test('prune sees merges on the remote trunk when local main is behind', async () => {
   const src = await makeRepo()

@@ -1,6 +1,14 @@
 import {existsSync, statSync} from 'node:fs'
 import {mkdir, rename} from 'node:fs/promises'
 import {basename, isAbsolute, join, relative, resolve, sep} from 'node:path'
+import {
+  changedLines,
+  diffSimilarity,
+  lineCount,
+  MIN_CHANGED_LINES,
+  SIMILARITY_THRESHOLD,
+} from './diff-similarity'
+import {subjectHasTicket, ticketKey} from './ticket'
 
 // Directories (under the repo root) that hold worktrees. Claude Code manages
 // its own worktrees under .claude/worktrees, and can only reopen a worktree
@@ -425,6 +433,113 @@ export async function mergedInto(
   for (const ref of refs) {
     if (await isSquashMergedInto(branch, ref)) return ref
     if (await mergeIsNoOp(branch, ref)) return ref
+  }
+  return null
+}
+
+export type LikelyMerge = {
+  hash: string
+  subject: string
+  ref: string // the trunk ref the commit is on
+  similarity: number // 0–1 share of changed lines in common with the branch
+  similar: boolean // similarity clears the threshold on a big enough diff
+  ticket: string | null // the branch's ticket key, when the subject has it
+}
+
+// Flags pin the diff format so user config (color, noprefix, external diff
+// tools) can't change what changedLines parses.
+const DIFF_FLAGS = [
+  '--no-color',
+  '--no-ext-diff',
+  '--src-prefix=a/',
+  '--dst-prefix=b/',
+]
+
+// A trunk commit that very probably landed `branch` (e.g. a squash merge that
+// was edited along the way), or null. Not proof, so callers should confirm.
+// Candidates are trunk commits made since the branch forked, no older than its
+// tip, touching ≥ 90% of its files; one qualifies when its diff is ≥ 90% the
+// same as the branch's, or its subject names the branch's ticket key.
+export async function likelyMergedCommit(
+  branch: string,
+  trunk: string,
+): Promise<LikelyMerge | null> {
+  const key = ticketKey(branch)
+  const tipTime = await run(['git', 'log', '-1', '--format=%ct', branch])
+  if (tipTime.code !== 0) return null
+
+  for (const ref of await trunkRefs(trunk)) {
+    const base = await run(['git', 'merge-base', ref, branch])
+    if (base.code !== 0) continue
+    const names = await run([
+      'git',
+      'diff',
+      '--name-only',
+      '--no-ext-diff',
+      base.stdout,
+      branch,
+    ])
+    const branchFiles = names.stdout.split('\n').filter(Boolean)
+    if (names.code !== 0 || branchFiles.length === 0) continue
+
+    const log = await run([
+      'git',
+      'log',
+      '--no-merges',
+      '--name-only',
+      '--format=%x01%H%x00%ct%x00%s',
+      `${base.stdout}..${ref}`,
+    ])
+    if (log.code !== 0) continue
+    const candidates = log.stdout
+      .split('\x01')
+      .filter(Boolean)
+      .map((entry) => {
+        const [header, ...files] = entry.split('\n')
+        const [hash, time, subject = ''] = header.split('\0')
+        return {hash, time: Number(time), subject, files: new Set(files)}
+      })
+      .filter((c) => {
+        if (c.time < Number(tipTime.stdout)) return false
+        const covered = branchFiles.filter((f) => c.files.has(f)).length
+        return covered / branchFiles.length >= 0.9
+      })
+    if (candidates.length === 0) continue
+
+    const branchDiff = await run([
+      'git',
+      'diff',
+      ...DIFF_FLAGS,
+      base.stdout,
+      branch,
+    ])
+    const branchLines = changedLines(branchDiff.stdout)
+    let best: LikelyMerge | null = null
+    for (const c of candidates) {
+      const show = await run([
+        'git',
+        'show',
+        '--format=',
+        ...DIFF_FLAGS,
+        c.hash,
+      ])
+      const similarity = diffSimilarity(branchLines, changedLines(show.stdout))
+      const similar =
+        lineCount(branchLines) >= MIN_CHANGED_LINES &&
+        similarity >= SIMILARITY_THRESHOLD
+      const ticket = key && subjectHasTicket(c.subject, key) ? key : null
+      if (!similar && !ticket) continue
+      if (best && best.similarity >= similarity) continue
+      best = {
+        hash: c.hash,
+        subject: c.subject,
+        ref,
+        similarity,
+        similar,
+        ticket,
+      }
+    }
+    if (best) return best
   }
   return null
 }
