@@ -1045,6 +1045,36 @@ test('shell-init emits the wrapper with per-shell completion', async () => {
   expect(bash.stdout).toContain('complete -F _wt wt')
 })
 
+test('the shell wrapper still works from a deleted worktree', async () => {
+  const repo = await makeRepo()
+  const path = join(repo, '.worktrees', 'doomed')
+
+  // A `wt` on PATH for the wrapper's `command wt` to reach.
+  const bin = join(scratch, 'bin')
+  mkdirSync(bin, {recursive: true})
+  writeFileSync(join(bin, 'wt'), `#!/bin/sh\nexec bun ${MAIN} "$@"\n`, {
+    mode: 0o755,
+  })
+  const env = {...ENV, PATH: `${bin}:${process.env.PATH}`}
+
+  for (const shell of ['bash', 'zsh']) {
+    if (!Bun.which(shell)) continue
+    await git(repo, 'worktree', 'add', '-q', '--detach', path)
+    // Delete the worktree from inside it, as removing it elsewhere would.
+    const script = [
+      `eval "$(command wt shell-init ${shell})"`,
+      `cd '${path}'`,
+      `rm -rf '${path}'`,
+      'wt @',
+      'pwd',
+    ].join('\n')
+    const res = await run([shell, '-c', script], repo, env)
+    expect(res.code).toBe(0)
+    expect(res.stdout).toBe(repo)
+    await git(repo, 'worktree', 'prune')
+  }
+})
+
 test('rename moves the worktree and its branch, printing the new path when current', async () => {
   const repo = await makeRepo()
   const oldPath = (await wt(repo, 'add', 'feature-x')).stdout

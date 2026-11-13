@@ -149,8 +149,15 @@ export function pathInWorktree(
 ): string {
   if (current === null) return destination
   const subdir = relative(current, process.cwd())
+  // A worktrees dir (and anything under it) holds other worktrees, not part of
+  // this one — e.g. where the shell wrapper lands after the cwd's worktree was
+  // deleted — so there's nothing to carry over.
+  const inWorktreesDir = WORKTREE_DIRS.some(
+    (dir) => subdir === dir || subdir.startsWith(`${dir}${sep}`),
+  )
   if (
     !subdir ||
+    inWorktreesDir ||
     subdir === '..' ||
     subdir.startsWith(`..${sep}`) ||
     isAbsolute(subdir)

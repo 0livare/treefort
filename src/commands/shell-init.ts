@@ -8,7 +8,16 @@ import {basename} from 'node:path'
 // their stdout is the command's own output / shell code, not a path to cd
 // into. The wrapper is POSIX-compatible and shared between shells; completion
 // is per-shell.
+//
+// If the cwd was deleted out from under the shell (say, its worktree was
+// removed elsewhere), nothing can run there — bun refuses to start — so first
+// climb $PWD to the nearest directory that still exists.
 const wrapper = `wt() {
+  if [ ! -d "$PWD" ]; then
+    local up="$PWD"
+    while [ -n "$up" ] && [ ! -d "$up" ]; do up=\${up%/*}; done
+    cd "\${up:-/}" || return
+  fi
   case "$1" in
     exec|claude|shell-init)
       command wt "$@"
