@@ -1,4 +1,4 @@
-import {afterAll, expect, test} from 'bun:test'
+import {afterAll, expect, setDefaultTimeout, test} from 'bun:test'
 import {
   existsSync,
   mkdirSync,
@@ -15,6 +15,11 @@ import {encodeProjectPath} from './claude-sessions'
 // against throwaway repos. stdin is never a TTY here, so these also pin down
 // the non-interactive behavior. Git config is isolated so the host's settings
 // (merge.ff, hooks, …) can't leak in.
+
+// Each test spawns several real wt/git processes; a non-interactive `rm`
+// alone runs a dozen-odd git commands for its branch-safety check. Bun's 5s
+// default sits too close to that, so loaded machines flake.
+setDefaultTimeout(30_000)
 
 const MAIN = join(import.meta.dir, 'main.ts')
 // realpath so paths compare equal to git's output (macOS tmpdir is a symlink).
